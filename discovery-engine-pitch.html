@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LITMUS - The Discovery Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --muted: #8888aa;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --cyan: #22d3ee;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent2), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 20px;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 32px;
+    font-weight: 300;
+  }
+  .hero-tags {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tag.track { border-color: var(--accent); color: var(--accent2); }
+
+  /* Sections */
+  section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+  }
+
+  /* Thesis */
+  .thesis {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 800px;
+    line-height: 1.8;
+    margin-bottom: 32px;
+  }
+  .thesis strong { color: var(--text); }
+
+  /* Pipeline Diagram */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    margin: 40px 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .pipe-node {
+    flex: 1;
+    min-width: 160px;
+    padding: 20px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+  }
+  .pipe-node:first-child { border-radius: 12px 0 0 12px; }
+  .pipe-node:last-child { border-radius: 0 12px 12px 0; }
+  .pipe-node:not(:last-child)::after {
+    content: '>';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+    z-index: 1;
+    background: var(--bg);
+    width: 16px;
+    text-align: center;
+  }
+  .pipe-icon { font-size: 28px; margin-bottom: 8px; }
+  .pipe-name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .pipe-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* Feedback loop arrow */
+  .feedback-loop {
+    text-align: center;
+    margin: -8px 0 32px;
+    position: relative;
+  }
+  .feedback-arrow {
+    display: inline-block;
+    padding: 8px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--amber);
+    border: 1px dashed var(--amber);
+    border-radius: 8px;
+    background: rgba(251, 191, 36, 0.05);
+  }
+
+  /* Skeptic Gauntlet */
+  .gauntlet {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 32px 0;
+  }
+  .gauntlet-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 12px;
+    text-align: center;
+    position: relative;
+  }
+  .gauntlet-step .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    margin-bottom: 6px;
+  }
+  .gauntlet-step .step-name {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .gauntlet-step .step-method {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gauntlet-step:not(:last-child)::after {
+    content: '>';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--red);
+    font-weight: 700;
+    z-index: 1;
+  }
+
+  /* Score formula */
+  .formula-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--cyan);
+    margin-bottom: 12px;
+  }
+  .formula-explain {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Discovery card (example output) */
+  .discovery-card {
+    background: var(--surface);
+    border-left: 3px solid var(--green);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+    margin: 24px 0;
+  }
+  .discovery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .discovery-grade {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(52, 211, 153, 0.15);
+    color: var(--green);
+  }
+  .discovery-title {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .discovery-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+  .discovery-stats {
+    display: flex;
+    gap: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .stat-val { color: var(--cyan); }
+
+  /* Diff table */
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .diff-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .diff-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .diff-table tr:last-child td { border-bottom: none; }
+  .diff-them { color: var(--muted); }
+  .diff-us { color: var(--green); }
+
+  /* Rubric grid */
+  .rubric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .rubric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .rubric-card h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rubric-card p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .rubric-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-green { background: var(--green); }
+  .dot-cyan { background: var(--cyan); }
+  .dot-amber { background: var(--amber); }
+  .dot-accent { background: var(--accent); }
+
+  /* Tech stack */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+  .stack-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stack-item .stack-layer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .stack-item .stack-tool {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .stack-item .stack-why {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Demo timeline */
+  .timeline {
+    position: relative;
+    margin: 32px 0;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -26px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .tl-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+  .tl-event { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .tl-detail { font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 40px; }
+    .pipeline { flex-direction: column; }
+    .pipe-node { border-radius: 8px !important; }
+    .pipe-node::after { display: none; }
+    .gauntlet { grid-template-columns: 1fr 1fr; }
+    .gauntlet-step::after { display: none; }
+    .rubric-grid, .stack-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-label">EmpireHacks 2026 / Track 1: The Operator</div>
+    <h1>LITMUS</h1>
+    <p class="hero-sub">Autonomous data exploration agent. Forms hypotheses, runs experiments, tries to kill its own findings. Reports only what survives.</p>
+    <div class="hero-tags">
+      <span class="tag track">The Operator</span>
+      <span class="tag">Agentic Autonomy</span>
+      <span class="tag">Tool Use</span>
+      <span class="tag">State Management</span>
+      <span class="tag">Multimodal Input</span>
+    </div>
+  </div>
+
+  <!-- THESIS -->
+  <section>
+    <div class="section-label">The Problem</div>
+    <h2>Existing tools answer questions. This one finds them.</h2>
+    <p class="thesis">
+      Pandas Profiling produces summaries you already expected. LLM chat answers the question you typed. AutoML optimizes a target you defined. All reactive. All waiting for your input.
+    </p>
+    <p class="thesis">
+      LITMUS runs autonomously. It profiles your data, generates hypotheses ranked by information gain, executes statistical tests, attempts to <strong>debunk its own results</strong>, and surfaces only findings that pass a 5-stage validation gauntlet. You upload a dataset. It tells you <strong>what you missed.</strong>
+    </p>
+  </section>
+
+  <!-- PIPELINE -->
+  <section>
+    <div class="section-label">Architecture</div>
+    <h2>The Discovery Loop</h2>
+
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pipe-icon">1</div>
+        <div class="pipe-name">PROFILER</div>
+        <div class="pipe-desc">Schema inference, distributions, correlations, outlier census, missing data patterns</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">2</div>
+        <div class="pipe-name">HYPOTHESIZER</div>
+        <div class="pipe-desc">Generates ranked hypotheses by expected information gain. Decides where to look next.</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">3</div>
+        <div class="pipe-name">EXPERIMENTER</div>
+        <div class="pipe-desc">Writes + executes statistical tests in sandbox. scipy, statsmodels, sklearn. Generates live plots.</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">4</div>
+        <div class="pipe-name">SKEPTIC</div>
+        <div class="pipe-desc">Challenges its own findings through 5 validation checks. Failed results are archived, not discarded.</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">5</div>
+        <div class="pipe-name">NARRATOR</div>
+        <div class="pipe-desc">Produces narrated findings with cited evidence, confidence grades, and embedded plots.</div>
+      </div>
+    </div>
+
+    <div class="feedback-loop">
+      <div class="feedback-arrow">Results from step 3 update belief state and feed back into step 2. Each experiment informs the next.</div>
+    </div>
+  </section>
+
+  <!-- DUAL MODE -->
+  <section>
+    <div class="section-label">Two Modes</div>
+    <h2>Discovery Mode + Directed Testing Mode</h2>
+
+    <div class="rubric-grid">
+      <div class="rubric-card" style="border-color: var(--cyan);">
+        <h4><span class="rubric-dot dot-cyan"></span> Discovery Mode</h4>
+        <p style="font-size: 13px; margin-bottom: 12px;">"Here's my data. What's in it?"</p>
+        <p>Autonomous exploration. LITMUS generates its own hypotheses, runs experiments, validates findings. Zero guidance needed. For researchers, analysts, or domain experts sitting on data they haven't fully examined.</p>
+      </div>
+      <div class="rubric-card" style="border-color: var(--green);">
+        <h4><span class="rubric-dot dot-green"></span> Directed Testing Mode</h4>
+        <p style="font-size: 13px; margin-bottom: 12px;">"Here's my hypothesis. Test it rigorously."</p>
+        <p>User describes a hypothesis in plain English. LITMUS determines the appropriate test, checks assumptions, falls back to non-parametric alternatives when assumptions fail, runs power analysis, computes effect sizes, and produces a plain English interpretation.</p>
+      </div>
+    </div>
+
+    <p class="thesis" style="margin-top: 8px;">Directed mode handles significance tests, A/B tests, multi-variant experiments, and segment breakdowns. The user who knows <strong>what</strong> to test but not <strong>how</strong> gets the same statistical rigor as someone writing scipy by hand.</p>
+
+    <div class="formula-box" style="border-color: var(--green); text-align: left;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 16px;">What Directed Mode automates:</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+        <div>
+          <div style="color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px;">TEST SELECTION</div>
+          <div style="color: var(--muted);">Picks t-test, chi-square, Mann-Whitney, ANOVA, etc. based on data types, sample size, and distribution shape</div>
+        </div>
+        <div>
+          <div style="color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px;">ASSUMPTION CHECKING</div>
+          <div style="color: var(--muted);">Shapiro-Wilk for normality, Levene's for variance homogeneity. Auto-falls back to non-parametric when violated.</div>
+        </div>
+        <div>
+          <div style="color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px;">POWER ANALYSIS</div>
+          <div style="color: var(--muted);">Flags underpowered experiments before wasting time. Reports minimum sample size needed for the target effect.</div>
+        </div>
+        <div>
+          <div style="color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 4px;">A/B TEST SUITE</div>
+          <div style="color: var(--muted);">Sequential testing, multiple variants, guardrail metrics, segment breakdowns. Full experiment report with effect sizes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="discovery-card" style="border-left-color: var(--cyan);">
+      <div class="discovery-header">
+        <span class="discovery-title">Example: Directed Mode Output</span>
+        <span class="discovery-grade" style="background: rgba(34, 211, 238, 0.15); color: var(--cyan);">Directed Test</span>
+      </div>
+      <p class="discovery-body">
+        User input: "Did the new checkout flow improve conversion rates?"<br><br>
+        LITMUS: "Group B converted 12% higher than Group A (18.3% vs 16.4%). Normality check passed (Shapiro-Wilk p = 0.34). Applied Welch's t-test: t(1847) = 3.12, p = 0.003, Cohen's d = 0.48 (medium effect). Power = 0.91 at current sample size. Result held across all 3 user segments (mobile, desktop, tablet). No guardrail metric regressions detected."
+      </p>
+      <div class="discovery-stats">
+        <span>Test: <span class="stat-val">Welch's t-test</span></span>
+        <span>p-value: <span class="stat-val">0.003</span></span>
+        <span>Effect: <span class="stat-val">medium (d=0.48)</span></span>
+        <span>Power: <span class="stat-val">0.91</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKEPTIC GAUNTLET -->
+  <section>
+    <div class="section-label">Validation</div>
+    <h2>The Skeptic Gauntlet</h2>
+    <p class="thesis">Every finding passes through five validation checks before being reported. Findings that fail validation are demoted and archived with full reasoning, not deleted. The entire experimental trail is preserved.</p>
+
+    <div class="gauntlet">
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 1</div>
+        <div class="step-name">Multiple Testing</div>
+        <div class="step-method">Benjamini-Hochberg FDR</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 2</div>
+        <div class="step-name">Confounder Scan</div>
+        <div class="step-method">Partial correlations</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 3</div>
+        <div class="step-name">Simpson's Paradox</div>
+        <div class="step-method">Stratified analysis</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 4</div>
+        <div class="step-name">Holdout Replication</div>
+        <div class="step-method">70/30 split validation</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 5</div>
+        <div class="step-name">Effect Size Filter</div>
+        <div class="step-method">Cohen's d > 0.3</div>
+      </div>
+    </div>
+
+    <p style="font-size: 13px; color: var(--muted); text-align: center;">
+      Confidence grades: <span style="color: var(--green);">A = survived all 5</span> /
+      <span style="color: var(--amber);">B = survived 4</span> /
+      <span style="color: var(--red);">C = failed validation (archived)</span>
+    </p>
+  </section>
+
+  <!-- SURPRISE SCORE -->
+  <section>
+    <div class="section-label">Ranking</div>
+    <h2>The Surprise Score</h2>
+    <p class="thesis">Statistical significance alone is not enough. LITMUS ranks by how <strong>unexpected</strong> a finding is relative to the data's baseline.</p>
+
+    <div class="formula-box">
+      <div class="formula">discovery_score = surprise * significance * effect_size</div>
+      <div class="formula-explain">
+        surprise = KL divergence from expected distribution &nbsp;|&nbsp;
+        significance = -log10(adjusted p-value) &nbsp;|&nbsp;
+        effect = |Cohen's d| or |r|
+      </div>
+    </div>
+
+    <p class="thesis">Obvious confirmations get deprioritized even at p < 0.001. Only findings that are statistically robust AND genuinely unexpected surface to the top.</p>
+  </section>
+
+  <!-- EXAMPLE OUTPUT -->
+  <section>
+    <div class="section-label">Output</div>
+    <h2>What LITMUS Produces</h2>
+
+    <div class="discovery-card">
+      <div class="discovery-header">
+        <span class="discovery-title">Discovery 1: Hidden patient subgroups drive readmissions</span>
+        <span class="discovery-grade">Grade A / Surprise 0.87</span>
+      </div>
+      <p class="discovery-body">
+        "Readmission rates were bimodal. I tested for hidden subgroups and found two distinct populations split by length-of-stay = 4 days. The short-stay group has 3.2x the readmission rate. I controlled for age (effect holds, partial r = 0.71). Checked for Simpson's Paradox across insurance type (holds in all subgroups). Replicated on 30% holdout (p = 0.003). This suggests premature discharge in a specific patient subset."
+      </p>
+      <div class="discovery-stats">
+        <span>p-value: <span class="stat-val">< 0.001</span></span>
+        <span>Cohen's d: <span class="stat-val">0.94</span></span>
+        <span>Confounder-adjusted: <span class="stat-val">YES</span></span>
+        <span>Holdout replicated: <span class="stat-val">YES</span></span>
+      </div>
+    </div>
+
+    <div class="discovery-card" style="border-left-color: var(--amber);">
+      <div class="discovery-header">
+        <span class="discovery-title">Discovery 2: Tuesday admission spike in rural counties</span>
+        <span class="discovery-grade" style="background: rgba(251, 191, 36, 0.15); color: var(--amber);">Grade B / Surprise 0.63</span>
+      </div>
+      <p class="discovery-body">
+        "Admissions spike 28% on Tuesdays in rural counties only. Urban counties show no effect. Correlation with weekly clinic closure patterns (r = 0.44). Failed Simpson's check for one subgroup (age > 75) but held for all others. Holdout replicated."
+      </p>
+      <div class="discovery-stats">
+        <span>p-value: <span class="stat-val">0.004</span></span>
+        <span>Cohen's d: <span class="stat-val">0.51</span></span>
+        <span>Confounder-adjusted: <span class="stat-val">PARTIAL</span></span>
+        <span>Holdout replicated: <span class="stat-val">YES</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIFFERENTIATOR -->
+  <section>
+    <div class="section-label">Positioning</div>
+    <h2>Positioning Against Existing Tools</h2>
+
+    <table class="diff-table">
+      <tr>
+        <th>Capability</th>
+        <th>LLM Chat / Profilers</th>
+        <th>LITMUS</th>
+      </tr>
+      <tr>
+        <td>Direction</td>
+        <td class="diff-them">Reactive. Waits for your query.</td>
+        <td class="diff-us">Autonomous. Generates its own research agenda.</td>
+      </tr>
+      <tr>
+        <td>Execution</td>
+        <td class="diff-them">Single-pass analysis</td>
+        <td class="diff-us">Iterative loop. Each result shapes the next experiment.</td>
+      </tr>
+      <tr>
+        <td>Rigor</td>
+        <td class="diff-them">Reports raw correlations</td>
+        <td class="diff-us">5-check validation: FDR, confounders, Simpson's, holdout, effect size. Full audit trail preserved.</td>
+      </tr>
+      <tr>
+        <td>Memory</td>
+        <td class="diff-them">Stateless between turns</td>
+        <td class="diff-us">Belief state accumulates across experiments</td>
+      </tr>
+      <tr>
+        <td>Output</td>
+        <td class="diff-them">Text response or static report</td>
+        <td class="diff-us">Narrated findings + interactive plots + external system push</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- RUBRIC FIT -->
+  <section>
+    <div class="section-label">Track Fit</div>
+    <h2>Operator Rubric Alignment</h2>
+
+    <div class="rubric-grid">
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-green"></span> Agentic Autonomy</h4>
+        <p>Zero human input after upload. Agent decides what to test, when to go deeper, when to prune. Explore/exploit tradeoff drives the loop.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-cyan"></span> Tool Use & Integration</h4>
+        <p>Dynamic tool calls: code executor, statistical libraries, visualization generator, Google Sheets API. Agent selects tools based on hypothesis type.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-amber"></span> Multimodal & Unstructured</h4>
+        <p>Accepts CSV, JSON, Excel, pasted tables via Claude Vision. Handles messy headers, mixed types, encoding issues. Messy in, structured out.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-accent"></span> State & Context Mgmt</h4>
+        <p>Belief state persists across rounds. Hypothesis tree grows and prunes. Experiment N is shaped by everything before it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section>
+    <div class="section-label">Stack</div>
+    <h2>Technical Architecture</h2>
+
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="stack-layer">Reasoning</div>
+        <div class="stack-tool">Claude (Anthropic)</div>
+        <div class="stack-why">Hypothesis generation, narration, code gen. Credits provided.</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Multimodal</div>
+        <div class="stack-tool">Claude Vision</div>
+        <div class="stack-why">Parse screenshots of tables, messy Excel images, PDFs</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Execution</div>
+        <div class="stack-tool">E2B Sandbox</div>
+        <div class="stack-why">Safe Python execution for statistical tests + plots</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Statistics</div>
+        <div class="stack-tool">scipy / statsmodels / pingouin</div>
+        <div class="stack-why">KS tests, partial correlations, FDR, clustering</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Visualization</div>
+        <div class="stack-tool">Plotly</div>
+        <div class="stack-why">Interactive charts embedded in discovery report</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Frontend</div>
+        <div class="stack-tool">Lovable / Next.js</div>
+        <div class="stack-why">Upload, reasoning stream, discovery dashboard. Credits provided.</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Output</div>
+        <div class="stack-tool">Google Sheets API</div>
+        <div class="stack-why">Push discoveries to external system (Operator requirement)</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">State</div>
+        <div class="stack-tool">In-memory / Redis</div>
+        <div class="stack-why">Belief state, hypothesis tree, experiment log</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Infra</div>
+        <div class="stack-tool">Vercel + AWS</div>
+        <div class="stack-why">Deploy frontend, serverless functions for agent loop</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO FLOW -->
+  <section>
+    <div class="section-label">Demo Day</div>
+    <h2>3-Minute Demo Flow</h2>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-time">0:00 - 0:20</div>
+        <div class="tl-event">The Hook</div>
+        <div class="tl-detail">"You've run profiling. You've asked your LLM. LITMUS finds what neither of those caught."</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">0:20 - 0:40</div>
+        <div class="tl-event">Upload</div>
+        <div class="tl-detail">Drop a public dataset. Agent starts profiling. Reasoning streams live.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">0:40 - 1:30</div>
+        <div class="tl-event">Discovery Loop</div>
+        <div class="tl-detail">Hypotheses form, experiments run, visualizations generate. Hypothesis tree grows on screen. Dead branches gray out.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">1:30 - 2:15</div>
+        <div class="tl-event">Skeptic Gauntlet</div>
+        <div class="tl-detail">Findings enter validation. Some fail checks and get demoted to archive. "Finding 3 failed holdout replication. Archived with reasoning." Validated findings promoted.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">2:15 - 2:45</div>
+        <div class="tl-event">Report</div>
+        <div class="tl-detail">Narrated discoveries with confidence grades, surprise scores, and interactive plots. Pushed to Google Sheets.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">2:45 - 3:00</div>
+        <div class="tl-event">Close</div>
+        <div class="tl-detail">"Three validated discoveries. Statistically rigorous. Fully narrated. Pushed to your system."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div style="padding: 40px 0; text-align: center; color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+    EmpireHacks 2026 / Track 1: The Operator
+  </div>
+
+</div>
+</body>
+</html>

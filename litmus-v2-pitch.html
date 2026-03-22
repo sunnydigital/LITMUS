@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LITMUS - Transformer Training Dynamics</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --muted: #8888aa;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --cyan: #22d3ee;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent2), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 20px;
+    color: var(--muted);
+    max-width: 650px;
+    margin: 0 auto 32px;
+    font-weight: 300;
+  }
+  .hero-tags {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tag.track { border-color: var(--accent); color: var(--accent2); }
+
+  /* Sections */
+  section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: none; }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+  }
+
+  /* Thesis */
+  .thesis {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 800px;
+    line-height: 1.8;
+    margin-bottom: 32px;
+  }
+  .thesis strong { color: var(--text); }
+
+  /* Pipeline Diagram */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    margin: 40px 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .pipe-node {
+    flex: 1;
+    min-width: 160px;
+    padding: 20px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+  }
+  .pipe-node:first-child { border-radius: 12px 0 0 12px; }
+  .pipe-node:last-child { border-radius: 0 12px 12px 0; }
+  .pipe-node:not(:last-child)::after {
+    content: '>';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+    z-index: 1;
+    background: var(--bg);
+    width: 16px;
+    text-align: center;
+  }
+  .pipe-icon { font-size: 28px; margin-bottom: 8px; }
+  .pipe-name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .pipe-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .pipe-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    display: inline-block;
+  }
+  .badge-local { background: rgba(52, 211, 153, 0.15); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.3); }
+  .badge-claude { background: rgba(99, 102, 241, 0.15); color: var(--accent2); border: 1px solid rgba(99, 102, 241, 0.3); }
+  .badge-hybrid { background: rgba(251, 191, 36, 0.15); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+
+  /* Skeptic Gauntlet */
+  .gauntlet {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 32px 0;
+  }
+  .gauntlet-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 12px;
+    text-align: center;
+    position: relative;
+  }
+  .gauntlet-step .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    margin-bottom: 6px;
+  }
+  .gauntlet-step .step-name {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .gauntlet-step .step-method {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gauntlet-step .step-type {
+    font-size: 9px;
+    margin-top: 6px;
+  }
+  .gauntlet-step:not(:last-child)::after {
+    content: '>';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--red);
+    font-weight: 700;
+    z-index: 1;
+  }
+
+  /* Score formula */
+  .formula-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--cyan);
+    margin-bottom: 12px;
+  }
+  .formula-explain {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Discovery card */
+  .discovery-card {
+    background: var(--surface);
+    border-left: 3px solid var(--green);
+    border-radius: 0 12px 12px 0;
+    padding: 24px 28px;
+    margin: 24px 0;
+  }
+  .discovery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .discovery-grade {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(52, 211, 153, 0.15);
+    color: var(--green);
+  }
+  .discovery-title {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .discovery-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+  .discovery-stats {
+    display: flex;
+    gap: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .stat-val { color: var(--cyan); }
+
+  /* Diff table */
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .diff-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .diff-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .diff-table tr:last-child td { border-bottom: none; }
+  .diff-them { color: var(--muted); }
+  .diff-us { color: var(--green); }
+
+  /* Rubric grid */
+  .rubric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .rubric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .rubric-card h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rubric-card p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .rubric-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-green { background: var(--green); }
+  .dot-cyan { background: var(--cyan); }
+  .dot-amber { background: var(--amber); }
+  .dot-accent { background: var(--accent); }
+
+  /* Tech stack */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+  .stack-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stack-item .stack-layer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .stack-item .stack-tool {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .stack-item .stack-why {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Demo timeline */
+  .timeline {
+    position: relative;
+    margin: 32px 0;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -26px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .tl-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+  .tl-event { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .tl-detail { font-size: 12px; color: var(--muted); }
+
+  /* Version comparison */
+  .version-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .version-table th {
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .version-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .version-table tr:last-child td { border-bottom: none; }
+  .v-old { color: var(--muted); text-decoration: line-through; }
+  .v-new { color: var(--green); }
+  .v-kept { color: var(--text); }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 40px; }
+    .pipeline { flex-direction: column; }
+    .pipe-node { border-radius: 8px !important; }
+    .pipe-node::after { display: none; }
+    .gauntlet { grid-template-columns: 1fr 1fr; }
+    .gauntlet-step::after { display: none; }
+    .rubric-grid, .stack-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-label">EmpireHacks 2026 / Track 1: The Operator</div>
+    <h1>LITMUS</h1>
+    <p class="hero-sub">Find hidden dynamics in your transformer training runs. Upload artifacts, get validated discoveries.</p>
+    <div class="hero-tags">
+      <span class="tag track">The Operator</span>
+      <span class="tag">Transformer Interpretability</span>
+      <span class="tag">Autonomous Pipeline</span>
+      <span class="tag">Statistical Validation</span>
+    </div>
+  </div>
+
+  <!-- THESIS -->
+  <section>
+    <div class="section-label">The Problem</div>
+    <h2>Training runs produce data nobody reads.</h2>
+    <p class="thesis">
+      You log loss curves, gradient norms, attention entropy, weight norms. Hundreds of epochs of signal. You check if loss went down and move on.
+    </p>
+    <p class="thesis">
+      LITMUS reads those artifacts autonomously. It finds <strong>phase transitions</strong> you missed, <strong>gradient events</strong> that predicted capability jumps, <strong>attention head specialization</strong> patterns, and <strong>grokking dynamics</strong>. Then it tries to debunk its own findings. Only what survives gets reported.
+    </p>
+  </section>
+
+  <!-- PIPELINE -->
+  <section>
+    <div class="section-label">Architecture</div>
+    <h2>Single Route, Five Stages, SSE Streaming</h2>
+
+    <p class="thesis" style="margin-bottom: 16px;">
+      One API endpoint (<code style="color: var(--cyan); font-family: 'JetBrains Mono', monospace;">/api/discover</code>) orchestrates everything. Frontend consumes one SSE stream. No coordination overhead.
+    </p>
+
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pipe-icon">1</div>
+        <div class="pipe-name">PROFILER</div>
+        <div class="pipe-desc">Read training artifacts. Identify epochs, architecture, loss shape, anomalies.</div>
+        <div class="pipe-badge badge-claude">CLAUDE</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">2</div>
+        <div class="pipe-name">HYPOTHESIZER</div>
+        <div class="pipe-desc">Generate ranked hypotheses. Phase transitions, head specialization, grokking.</div>
+        <div class="pipe-badge badge-claude">CLAUDE</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">3</div>
+        <div class="pipe-name">EXPERIMENTER</div>
+        <div class="pipe-desc">Run numerical analysis on parsed data. Changepoints, z-scores, t-tests, correlations.</div>
+        <div class="pipe-badge badge-hybrid">LOCAL + CLAUDE</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">4</div>
+        <div class="pipe-name">SKEPTIC</div>
+        <div class="pipe-desc">5-check validation gauntlet. BH-FDR, confounders, temporal, holdout, effect size.</div>
+        <div class="pipe-badge badge-hybrid">LOCAL + CLAUDE</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-icon">5</div>
+        <div class="pipe-name">NARRATOR</div>
+        <div class="pipe-desc">Final discovery report with grades, surprise scores, and next steps.</div>
+        <div class="pipe-badge badge-claude">CLAUDE</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IT DISCOVERS -->
+  <section>
+    <div class="section-label">Output</div>
+    <h2>What LITMUS Finds</h2>
+
+    <div class="discovery-card">
+      <div class="discovery-header">
+        <span class="discovery-title">Grokking phase transition at epoch 47</span>
+        <span class="discovery-grade">Grade A / Surprise 0.91</span>
+      </div>
+      <p class="discovery-body">
+        "Train loss converges by epoch 20 but validation loss plateaus for 25 epochs, then drops 62% between epoch 45-50. Changepoint detection confirms structural break at epoch 47. Gradient norm spike at epoch 47 precedes the transition. Attention entropy drops 40% in the same window, consistent with head specialization driving generalization."
+      </p>
+      <div class="discovery-stats">
+        <span>p-value: <span class="stat-val">< 0.001</span></span>
+        <span>Cohen's d: <span class="stat-val">1.84</span></span>
+        <span>Checks passed: <span class="stat-val">5/5</span></span>
+        <span>Method: <span class="stat-val">Changepoint + t-test</span></span>
+      </div>
+    </div>
+
+    <div class="discovery-card" style="border-left-color: var(--amber);">
+      <div class="discovery-header">
+        <span class="discovery-title">Gradient spikes as phase transition precursors</span>
+        <span class="discovery-grade" style="background: rgba(251, 191, 36, 0.15); color: var(--amber);">Grade B / Surprise 0.67</span>
+      </div>
+      <p class="discovery-body">
+        "Gradient norm spikes at epoch 12 and 47. The epoch 47 spike precedes the grokking transition by 0-2 epochs. Cross-correlation peaks at lag -2 (r = 0.73). However, the epoch 12 spike has no corresponding phase transition, weakening the causal claim."
+      </p>
+      <div class="discovery-stats">
+        <span>p-value: <span class="stat-val">0.008</span></span>
+        <span>Cohen's d: <span class="stat-val">0.64</span></span>
+        <span>Checks passed: <span class="stat-val">4/5</span></span>
+        <span>Failed: <span style="color: var(--red);">Temporal stability</span></span>
+      </div>
+    </div>
+
+    <div class="discovery-card" style="border-left-color: var(--red);">
+      <div class="discovery-header">
+        <span class="discovery-title">Weight norm acceleration predicts loss independently</span>
+        <span class="discovery-grade" style="background: rgba(248, 113, 113, 0.15); color: var(--red);">Grade C / ARCHIVED</span>
+      </div>
+      <p class="discovery-body">
+        "Weight norm acceleration correlates with loss decrease (r = -0.41), but partial correlation controlling for gradient norm drops to r = -0.08. The signal is entirely explained by gradient dynamics. Archived: confounding variable explains the effect."
+      </p>
+      <div class="discovery-stats">
+        <span>p-value: <span class="stat-val">0.12</span></span>
+        <span>Cohen's d: <span class="stat-val">0.22</span></span>
+        <span>Checks passed: <span class="stat-val">2/5</span></span>
+        <span>Failed: <span style="color: var(--red);">Confounder, Effect Size, FDR</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKEPTIC GAUNTLET -->
+  <section>
+    <div class="section-label">Validation</div>
+    <h2>The Skeptic Gauntlet</h2>
+    <p class="thesis">Every finding passes five checks. Failures get archived with full reasoning, not deleted. The system kills its own bad results.</p>
+
+    <div class="gauntlet">
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 1</div>
+        <div class="step-name">Multiple Testing</div>
+        <div class="step-method">Benjamini-Hochberg FDR</div>
+        <div class="step-type" style="color: var(--green);">LOCAL</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 2</div>
+        <div class="step-name">Confounder Scan</div>
+        <div class="step-method">Partial correlations</div>
+        <div class="step-type" style="color: var(--accent2);">CLAUDE</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 3</div>
+        <div class="step-name">Temporal Stability</div>
+        <div class="step-method">Cross-window validation</div>
+        <div class="step-type" style="color: var(--accent2);">CLAUDE</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 4</div>
+        <div class="step-name">Holdout Replication</div>
+        <div class="step-method">Train/test split</div>
+        <div class="step-type" style="color: var(--accent2);">CLAUDE</div>
+      </div>
+      <div class="gauntlet-step">
+        <div class="step-num">CHECK 5</div>
+        <div class="step-name">Effect Size Filter</div>
+        <div class="step-method">Cohen's d > 0.3</div>
+        <div class="step-type" style="color: var(--green);">LOCAL</div>
+      </div>
+    </div>
+
+    <p style="font-size: 13px; color: var(--muted); text-align: center;">
+      Grades: <span style="color: var(--green);">A = 5/5 pass</span> /
+      <span style="color: var(--amber);">B = 4/5 pass</span> /
+      <span style="color: var(--red);">C = archived (< 4 pass)</span>
+    </p>
+  </section>
+
+  <!-- SURPRISE SCORE -->
+  <section>
+    <div class="section-label">Ranking</div>
+    <h2>Surprise Score</h2>
+    <p class="thesis">Obvious confirmations get deprioritized even at p < 0.001. Only findings that are statistically robust AND genuinely unexpected surface to the top.</p>
+
+    <div class="formula-box">
+      <div class="formula">discovery_score = surprise * significance * effect_size</div>
+      <div class="formula-explain">
+        surprise = KL divergence from expected &nbsp;|&nbsp;
+        significance = -log10(p_adj) &nbsp;|&nbsp;
+        effect = |Cohen's d|
+      </div>
+    </div>
+  </section>
+
+  <!-- RUBRIC FIT -->
+  <section>
+    <div class="section-label">Track Fit</div>
+    <h2>Operator Rubric Alignment</h2>
+
+    <div class="rubric-grid">
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-green"></span> Agentic Autonomy</h4>
+        <p>Zero human input after upload. Agent decides what to test, when to go deeper, when to prune. Five stages run without intervention.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-cyan"></span> Tool Use & Integration</h4>
+        <p>Local numerical analysis (changepoints, z-scores, t-tests, correlation, entropy) feeds into Claude for interpretation. BH-FDR and effect size run locally. Hybrid computation.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-amber"></span> Multimodal & Unstructured</h4>
+        <p>Accepts CSV, JSON, YAML training artifacts. Handles different logging formats. Profiles data structure before analysis.</p>
+      </div>
+      <div class="rubric-card">
+        <h4><span class="rubric-dot dot-accent"></span> State & Context Mgmt</h4>
+        <p>Profile summary carries through all stages. Experiment results feed validation. Findings accumulate and rank against each other. Full pipeline context preserved via SSE.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIFFERENTIATOR -->
+  <section>
+    <div class="section-label">Positioning</div>
+    <h2>Why Not Just Ask ChatGPT?</h2>
+
+    <table class="diff-table">
+      <tr>
+        <th>Dimension</th>
+        <th>LLM Chat</th>
+        <th>LITMUS</th>
+      </tr>
+      <tr>
+        <td>Direction</td>
+        <td class="diff-them">Reactive. Answers your question.</td>
+        <td class="diff-us">Autonomous. Generates its own research agenda.</td>
+      </tr>
+      <tr>
+        <td>Computation</td>
+        <td class="diff-them">Narrates statistics</td>
+        <td class="diff-us">Runs real numerical analysis, then narrates</td>
+      </tr>
+      <tr>
+        <td>Validation</td>
+        <td class="diff-them">None</td>
+        <td class="diff-us">5-check skeptic gauntlet. Kills its own bad findings.</td>
+      </tr>
+      <tr>
+        <td>Domain</td>
+        <td class="diff-them">General purpose</td>
+        <td class="diff-us">Transformer training dynamics. Knows what to look for.</td>
+      </tr>
+      <tr>
+        <td>Output</td>
+        <td class="diff-them">Text response</td>
+        <td class="diff-us">Graded findings + surprise scores + full audit trail</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- TECH STACK -->
+  <section>
+    <div class="section-label">Stack</div>
+    <h2>Technical Architecture</h2>
+
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="stack-layer">Reasoning</div>
+        <div class="stack-tool">Claude Sonnet 4.5</div>
+        <div class="stack-why">Profiling, hypothesis gen, interpretation, narration</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Analysis</div>
+        <div class="stack-tool">Local TypeScript</div>
+        <div class="stack-why">Changepoints, z-scores, t-tests, correlation, entropy</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Validation</div>
+        <div class="stack-tool">BH-FDR + Effect Size</div>
+        <div class="stack-why">Multiple testing correction, practical significance</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Scoring</div>
+        <div class="stack-tool">KL Divergence</div>
+        <div class="stack-why">Rank by surprise, not just p-value</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Frontend</div>
+        <div class="stack-tool">Next.js 16 + Tailwind 4</div>
+        <div class="stack-why">Single page, SSE consumer, dark theme</div>
+      </div>
+      <div class="stack-item">
+        <div class="stack-layer">Deploy</div>
+        <div class="stack-tool">Vercel</div>
+        <div class="stack-why">One-click deploy, edge streaming</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO FLOW -->
+  <section>
+    <div class="section-label">Demo</div>
+    <h2>2-Minute Demo Flow</h2>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-time">0:00 - 0:15</div>
+        <div class="tl-event">Hook</div>
+        <div class="tl-detail">"You train a model. You check if loss went down. You move on. LITMUS reads the training artifacts you ignored."</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">0:15 - 0:30</div>
+        <div class="tl-event">Upload</div>
+        <div class="tl-detail">Click "Run Demo" with synthetic NanoGPT data. Pipeline starts streaming.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">0:30 - 1:15</div>
+        <div class="tl-event">Discovery</div>
+        <div class="tl-detail">Profile streams in. Hypotheses appear ranked. Experiments run with real numbers. Loss curve visualization highlights grokking region.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">1:15 - 1:45</div>
+        <div class="tl-event">Validation</div>
+        <div class="tl-detail">Findings enter skeptic gauntlet. One gets killed (Grade C, archived). Two survive (Grade A, Grade B). Badges visible.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-time">1:45 - 2:00</div>
+        <div class="tl-event">Report</div>
+        <div class="tl-detail">"Two validated discoveries. One archived with reasoning. Full audit trail. Copy the markdown."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div style="padding: 40px 0; text-align: center; color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace;">
+    LITMUS v0.2 / EmpireHacks 2026 / Track 1: The Operator
+  </div>
+
+</div>
+</body>
+</html>

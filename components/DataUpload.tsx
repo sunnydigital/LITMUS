@@ -1,23 +1,13 @@
 "use client";
 
-/**
- * DataUpload
- *
- * Upload CSV data files or select from built-in demo datasets.
- * Supports:
- * - File upload (CSV, TSV, JSON, etc.)
- * - One-click demo dataset selection
- * - Paste tabular data (auto-detect format)
- * - Discover connected data sources (virtual MCP)
- */
-
-import { useState } from "react";
+import React from "react";
 
 interface DemoDataset {
   id: string;
   name: string;
   description: string;
   tags: string[];
+  color?: "accent" | "emerald" | "amber" | "purple";
 }
 
 const DEMO_DATASETS: DemoDataset[] = [
@@ -26,125 +16,122 @@ const DEMO_DATASETS: DemoDataset[] = [
     name: "Simpson's Paradox",
     description: "A/B test of a new checkout flow where treatment appears worse overall — but wins in every segment.",
     tags: ["A/B Test", "Causality"],
+    color: "accent",
   },
   {
     id: "startup-metrics",
     name: "Startup Metrics",
     description: "18 months of SaaS growth data with churn spikes, enterprise outliers, and a genuine PMF signal.",
     tags: ["SaaS", "Time Series"],
+    color: "emerald",
   },
   {
     id: "clinical-trial",
     name: "Clinical Trial",
     description: "Phase III RCT with 12 endpoints: 2 real effects, 3 spurious significances, and a multiple-testing trap.",
     tags: ["Clinical", "FDR"],
+    color: "amber",
   },
   {
     id: "feature-drift",
     name: "Feature Drift",
     description: "90 days of ML model monitoring: gradual feature drift, a pipeline bug, and a seasonal pattern.",
     tags: ["ML Ops", "Drift"],
+    color: "purple",
   },
   {
     id: "grokking",
     name: "Grokking Detection",
-    description: "Transformer training run with phase transitions, gradient spikes, and attention head specialization over 100 epochs.",
+    description: "Transformer training run with phase transitions, gradient spikes, and attention head specialization.",
     tags: ["ML Training", "Temporal"],
+    color: "accent",
   },
 ];
 
-interface DataSource {
-  id: string;
-  name: string;
-  description: string;
-  tables: Array<{ name: string; rowCount: number; columns: Array<{ name: string; type: string }> }>;
-  sourceType: string;
-}
+const DATASET_ICONS: Record<string, React.ReactElement> = {
+  "simpsons-paradox": (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
+  "startup-metrics": (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+  ),
+  "clinical-trial": (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+    </svg>
+  ),
+  "feature-drift": (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  "grokking": (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  ),
+};
+
+const COLOR_MAP = {
+  accent: {
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/20",
+    text: "text-indigo-400",
+    hover: "hover:bg-indigo-500/15",
+    gradient: "from-indigo-500 to-purple-500",
+  },
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+    hover: "hover:bg-emerald-500/15",
+    gradient: "from-emerald-500 to-teal-500",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+    hover: "hover:bg-amber-500/15",
+    gradient: "from-amber-500 to-orange-500",
+  },
+  purple: {
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/20",
+    text: "text-purple-400",
+    hover: "hover:bg-purple-500/15",
+    gradient: "from-purple-500 to-pink-500",
+  },
+};
 
 interface DataUploadProps {
   onUpload: (files: File[]) => void;
   onDemo: () => void;
   onDemoDataset: (datasetId: string) => void;
-  onPastedData?: (text: string) => void;
   disabled?: boolean;
 }
 
-export default function DataUpload({ onUpload, onDemoDataset, onPastedData, disabled }: DataUploadProps) {
-  const [pasteMode, setPasteMode] = useState(false);
-  const [pastedText, setPastedText] = useState("");
-  const [discoverMode, setDiscoverMode] = useState(false);
-  const [dataSources, setDataSources] = useState<DataSource[]>([]);
-  const [loadingSources, setLoadingSources] = useState(false);
-  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
-  const [crossAnalysisResult, setCrossAnalysisResult] = useState<{
-    hypotheses: Array<{ id: string; hypothesis: string; priority: string; datasets: string[] }>;
-    commonColumns: string[];
-  } | null>(null);
-  const [loadingCross, setLoadingCross] = useState(false);
-
-  async function handleDiscoverSources() {
-    setLoadingSources(true);
-    setDiscoverMode(true);
-    try {
-      const res = await fetch("/api/discover-sources");
-      const data = await res.json();
-      setDataSources(data.sources || []);
-    } catch {
-      setDataSources([]);
-    } finally {
-      setLoadingSources(false);
-    }
-  }
-
-  async function handleCrossAnalysis() {
-    if (selectedSources.size < 2) return;
-    setLoadingCross(true);
-    try {
-      const res = await fetch("/api/discover-sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ datasetIds: Array.from(selectedSources) }),
-      });
-      const data = await res.json();
-      setCrossAnalysisResult(data);
-    } catch {
-      setCrossAnalysisResult(null);
-    } finally {
-      setLoadingCross(false);
-    }
-  }
-
-  function handleSubmitPaste() {
-    if (!pastedText.trim()) return;
-    if (onPastedData) {
-      onPastedData(pastedText.trim());
-    }
-    setPastedText("");
-    setPasteMode(false);
-  }
-
-  function toggleSource(id: string) {
-    setSelectedSources((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    setCrossAnalysisResult(null);
-  }
-
+export default function DataUpload({ onUpload, onDemoDataset, disabled }: DataUploadProps) {
   return (
-    <div className="space-y-8">
-      {/* File Upload */}
-      <div className="border-2 border-dashed border-zinc-700 rounded-xl p-10 text-center hover:border-indigo-500 transition-colors">
-        <div className="text-zinc-400 mb-6">
-          <p className="text-lg font-medium text-zinc-200">Upload your data</p>
-          <p className="text-sm mt-2">
-            CSV, TSV, JSON, or any structured tabular data
+    <div className="w-full max-w-4xl mx-auto space-y-12">
+      {/* Upload Card */}
+      <div className="card-glow p-8 md:p-10 animate-fade-in-up">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 mb-6">
+            <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold text-zinc-100 mb-3">Upload Your Data</h2>
+          <p className="text-zinc-400 max-w-md mx-auto">
+            Drop your data files here or click to browse. We support CSV, JSON, and more.
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-4">
+        <div className="relative">
           <input
             type="file"
             multiple
@@ -158,223 +145,82 @@ export default function DataUpload({ onUpload, onDemoDataset, onPastedData, disa
           />
           <label
             htmlFor="artifact-upload"
-            className={`inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg cursor-pointer font-medium transition-colors ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`input-zone ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Select files
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ boxShadow: '0 8px 30px rgba(99, 102, 241, 0.3)' }}>
+              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            
+            <span className="text-lg font-medium text-zinc-200 mb-2 block">
+              {disabled ? "Processing..." : "Drop files here or click to browse"}
+            </span>
+            <span className="text-sm text-zinc-500">
+              {disabled ? "Please wait" : "CSV, JSON, YAML, TOML, TSV, TXT"}
+            </span>
           </label>
-          <button
-            onClick={() => { setPasteMode(!pasteMode); setDiscoverMode(false); }}
-            disabled={disabled}
-            className={`px-6 py-3 bg-zinc-700 hover:bg-zinc-600 rounded-lg font-medium transition-colors ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            Paste data
-          </button>
         </div>
 
-        <p className="text-xs text-zinc-600 mt-4">
+        <p className="text-xs text-zinc-600 text-center mt-6">
           LITMUS will profile the data, generate hypotheses, run statistical tests, and validate findings through a 5-check skeptic gauntlet.
         </p>
       </div>
 
-      {/* Paste Data Section */}
-      {pasteMode && (
-        <div className="border border-zinc-700 rounded-xl p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-zinc-300">Paste your data</h2>
-            <span className="text-xs text-zinc-500">Auto-detects CSV, TSV, JSON, or space-delimited</span>
-          </div>
-          <textarea
-            className="w-full h-40 bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-200 text-sm font-mono resize-y focus:outline-none focus:border-indigo-500 placeholder:text-zinc-600"
-            placeholder={"col1,col2,col3\n1,2,3\n4,5,6\n\n# or paste TSV, JSON arrays, space-delimited tables..."}
-            value={pastedText}
-            onChange={(e) => setPastedText(e.target.value)}
-            disabled={disabled}
-          />
-          <div className="flex gap-3">
-            <button
-              onClick={handleSubmitPaste}
-              disabled={disabled || !pastedText.trim()}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Analyze Pasted Data
-            </button>
-            <button
-              onClick={() => { setPasteMode(false); setPastedText(""); }}
-              className="px-5 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-sm transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Divider */}
+      <div className="flex items-center gap-4 animate-fade-in-up delay-100">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
+        <span className="text-sm font-medium text-zinc-500 uppercase tracking-widest">or try a demo</span>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent" />
+      </div>
 
-      {/* Demo Dataset Picker */}
-      <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-4">
-          Or try a demo dataset
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DEMO_DATASETS.map((ds) => (
+      {/* Demo Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up delay-200">
+        {DEMO_DATASETS.map((ds, index) => {
+          const colors = COLOR_MAP[ds.color as keyof typeof COLOR_MAP];
+          return (
             <button
               key={ds.id}
               onClick={() => onDemoDataset(ds.id)}
               disabled={disabled}
-              className={`text-left p-5 rounded-xl border border-zinc-700 hover:border-indigo-500 hover:bg-zinc-800/50 transition-all group ${
-                disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-              }`}
+              className={`
+                card p-5 text-left group
+                ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+              `}
+              style={{ animationDelay: `${index * 75}ms` }}
             >
-              <div className="flex items-start justify-between mb-2">
-                <p className="font-semibold text-zinc-100 group-hover:text-indigo-300 transition-colors">
-                  {ds.name}
-                </p>
-                <div className="flex gap-1 ml-2 flex-shrink-0">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-11 h-11 rounded-xl ${colors.bg} flex items-center justify-center ${colors.text}`}>
+                  {DATASET_ICONS[ds.id]}
+                </div>
+                <div className="flex flex-col gap-1.5 items-end">
                   {ds.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded-full"
+                      className={`text-[10px] px-2 py-0.5 rounded-full ${colors.bg} ${colors.text} font-medium`}
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-zinc-400 leading-relaxed">{ds.description}</p>
+              
+              <h3 className="font-semibold text-zinc-100 mb-2 group-hover:text-white transition-colors">
+                {ds.name}
+              </h3>
+              <p className="text-sm text-zinc-500 leading-relaxed line-clamp-2">
+                {ds.description}
+              </p>
+              
+              <div className={`mt-4 flex items-center gap-2 text-sm font-medium ${colors.text} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                <span>Explore</span>
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </div>
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Connected Data Sources — Virtual MCP */}
-      <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-4">
-          Or explore connected data sources
-        </h2>
-
-        {!discoverMode ? (
-          <button
-            onClick={handleDiscoverSources}
-            disabled={disabled}
-            className={`w-full p-5 rounded-xl border border-zinc-700 hover:border-emerald-500 hover:bg-zinc-800/50 transition-all text-left group ${
-              disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm">
-                ⊕
-              </div>
-              <div>
-                <p className="font-semibold text-zinc-100 group-hover:text-emerald-300 transition-colors">
-                  Discover Data Sources
-                </p>
-                <p className="text-sm text-zinc-500 mt-0.5">
-                  Scan connected databases, MCP endpoints, and local datasets
-                </p>
-              </div>
-            </div>
-          </button>
-        ) : (
-          <div className="border border-zinc-700 rounded-xl p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-zinc-200">Available Data Sources</h3>
-              <button
-                onClick={() => { setDiscoverMode(false); setSelectedSources(new Set()); setCrossAnalysisResult(null); }}
-                className="text-xs text-zinc-500 hover:text-zinc-300"
-              >
-                Close
-              </button>
-            </div>
-
-            {loadingSources ? (
-              <div className="flex items-center gap-2 text-zinc-500 text-sm">
-                <div className="w-4 h-4 border-2 border-zinc-600 border-t-emerald-500 rounded-full animate-spin" />
-                Scanning data sources...
-              </div>
-            ) : dataSources.length === 0 ? (
-              <p className="text-zinc-500 text-sm">No data sources found. Add CSV files to data/demo-datasets/ or configure an MCP endpoint.</p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-zinc-500">
-                  Select 2+ datasets to run cross-dataset hypothesis generation
-                </p>
-                {dataSources.map((source) => (
-                  <button
-                    key={source.id}
-                    onClick={() => toggleSource(source.id)}
-                    className={`w-full text-left p-4 rounded-lg border transition-all ${
-                      selectedSources.has(source.id)
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-zinc-700 hover:border-zinc-600"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center text-xs ${
-                          selectedSources.has(source.id)
-                            ? "border-emerald-500 bg-emerald-500 text-white"
-                            : "border-zinc-600"
-                        }`}>
-                          {selectedSources.has(source.id) ? "✓" : ""}
-                        </div>
-                        <div>
-                          <p className="font-medium text-zinc-200 text-sm">{source.name}</p>
-                          <p className="text-xs text-zinc-500">{source.description}</p>
-                        </div>
-                      </div>
-                      <div className="text-xs text-zinc-600">
-                        {source.tables.length} table{source.tables.length !== 1 ? "s" : ""}
-                        {source.tables.map((t) => (
-                          <span key={t.name} className="ml-1 text-zinc-700">
-                            · {t.name} ({t.rowCount}r)
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-
-                {selectedSources.size >= 2 && (
-                  <button
-                    onClick={handleCrossAnalysis}
-                    disabled={loadingCross}
-                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    {loadingCross ? "Generating cross-dataset hypotheses..." : `Analyze ${selectedSources.size} datasets together →`}
-                  </button>
-                )}
-
-                {crossAnalysisResult && (
-                  <div className="space-y-3 pt-2 border-t border-zinc-800">
-                    <div>
-                      <p className="text-xs text-zinc-400 mb-1">
-                        Common columns: {crossAnalysisResult.commonColumns.join(", ") || "none found"}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium text-zinc-300">
-                      Cross-dataset hypotheses ({crossAnalysisResult.hypotheses.length}):
-                    </p>
-                    {crossAnalysisResult.hypotheses.map((h, i) => (
-                      <div key={h.id || i} className="p-3 bg-zinc-900 border border-zinc-800 rounded-lg text-sm">
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="text-zinc-300">{h.hypothesis}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                            h.priority === "high" ? "bg-emerald-500/20 text-emerald-400" :
-                            h.priority === "medium" ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-zinc-700 text-zinc-400"
-                          }`}>
-                            {h.priority}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-600 mt-1">
-                          Datasets: {h.datasets.join(", ")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          );
+        })}
       </div>
     </div>
   );

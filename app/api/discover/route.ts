@@ -197,6 +197,22 @@ export async function POST(req: NextRequest) {
         let hypotheses = await generateHypotheses(anthropic, profileSummary, computedSurpriseMap);
         send("result", { stage: "hypotheses", data: hypotheses });
 
+        // Send surprise score bar chart for hypotheses
+        if (hypotheses.length > 0) {
+          send("chart", {
+            stage: "hypothesis",
+            charts: [{
+              type: "bar",
+              title: "Hypothesis Surprise Scores (Prior KL-Divergence)",
+              data: hypotheses.map((h, i) => ({
+                label: `H${i + 1}`,
+                Surprise: Math.round(h.surprise_prior * 100) / 100,
+              })),
+              config: { keys: ["Surprise"], xKey: "label", yLabel: "Surprise" },
+            }],
+          });
+        }
+
         // ---- STAGE 3: EXPERIMENT ----
         send("stage", { stage: "experimenting", message: "Running statistical tests..." });
 
@@ -230,6 +246,23 @@ export async function POST(req: NextRequest) {
 
           hypotheses = [...hypotheses, ...additionalHypotheses];
           experimentResults.push(...additionalResults);
+        }
+
+        // Send forest plot of effect sizes across all experiments
+        if (experimentResults.length > 0) {
+          send("chart", {
+            stage: "experiment",
+            charts: [{
+              type: "forest",
+              title: "Effect Sizes Across Experiments (Cohen's d)",
+              data: experimentResults.map((exp, i) => {
+                const label = `H${i + 1}: ${exp.hypothesis.length > 45 ? exp.hypothesis.slice(0, 45) + "…" : exp.hypothesis}`;
+                const color = exp.p_value < 0.05 ? (exp.supports ? "green" : "red") : "gray";
+                return { endpoint: label, cohensD: Math.round(exp.effect_size * 1000) / 1000, pValue: exp.p_value, color };
+              }),
+              config: { xKey: "cohensD", yKey: "endpoint" },
+            }],
+          });
         }
 
         // ---- STAGE 4: VALIDATE ----

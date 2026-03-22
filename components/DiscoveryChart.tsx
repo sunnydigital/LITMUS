@@ -297,8 +297,9 @@ function ForestPlotChart({ chart }: { chart: ChartData }) {
 
 export default function DiscoveryChart({ chart }: DiscoveryChartProps) {
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 mt-3">
-      <h4 className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wide">
+    <div className="card p-5">
+      <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
         {chart.title}
       </h4>
       {chart.type === "grouped-bar" && <GroupedBarChart chart={chart} />}
