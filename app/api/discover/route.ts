@@ -12,8 +12,29 @@ import {
 import { benjaminiHochberg, effectSizeCheck, computeGrade } from "@/lib/skeptic";
 import type { CheckResult } from "@/lib/skeptic";
 import { discoveryScore } from "@/lib/surprise";
+import { parseCSV, runAnalysisSuite } from "@/lib/analysis";
 
 const MODEL = "claude-sonnet-4-5-20250929";
+
+// Demo dataset configurations
+const DEMO_DATASETS: Record<string, { label: string; files: string[] }> = {
+  "simpsons-paradox": {
+    label: "Simpson's Paradox A/B Test",
+    files: ["config.json", "ab_test.csv"],
+  },
+  "startup-metrics": {
+    label: "Startup SaaS Metrics",
+    files: ["config.json", "metrics.csv"],
+  },
+  "clinical-trial": {
+    label: "Clinical Trial",
+    files: ["config.json", "trial_results.csv"],
+  },
+  "feature-drift": {
+    label: "ML Feature Drift",
+    files: ["config.json", "monitoring.csv"],
+  },
+};
 
 /**
  * POST /api/discover
@@ -21,47 +42,82 @@ const MODEL = "claude-sonnet-4-5-20250929";
  * Single orchestrator route. Runs 5 pipeline stages sequentially via Claude.
  * Streams SSE events to the frontend for real-time progress.
  *
- * Accepts: FormData with files OR { demo: true } to use synthetic data.
+ * Accepts:
+ *   - FormData with files (file upload)
+ *   - FormData with demo=true (legacy demo)
+ *   - FormData with demoDataset=<name> (new demo datasets)
+ *   - JSON body with { demo: true } or { demoDataset: string }
  */
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const anthropic = new Anthropic();
 
-  // Parse input: demo mode or uploaded files
+  // Parse input
   let dataDescription = "";
+  let computedStats = "";
 
   const contentType = req.headers.get("content-type") || "";
 
   if (contentType.includes("multipart/form-data")) {
     const formData = await req.formData();
+    const demoDataset = formData.get("demoDataset");
     const isDemo = formData.get("demo") === "true";
 
-    if (isDemo) {
-      dataDescription = await loadDemoData();
+    if (demoDataset && typeof demoDataset === "string") {
+      const { desc, stats } = await loadDemoDataset(demoDataset);
+      dataDescription = desc;
+      computedStats = stats;
+    } else if (isDemo) {
+      dataDescription = await loadLegacyDemoData();
     } else {
       // Read uploaded files as text
       const parts: string[] = [];
-      for (const [key, value] of formData.entries()) {
+      const csvTexts: string[] = [];
+      for (const [, value] of formData.entries()) {
         if (value instanceof File) {
           const text = await value.text();
           parts.push(`--- ${value.name} (${value.size} bytes) ---\n${text}`);
+          if (value.name.endsWith(".csv")) {
+            csvTexts.push(text);
+          }
         }
       }
       dataDescription = parts.join("\n\n");
+      // Run analysis on uploaded CSVs
+      if (csvTexts.length > 0) {
+        const allStats: string[] = [];
+        for (const csvText of csvTexts) {
+          const parsed = parseCSV(csvText);
+          if (parsed.rows.length > 0) {
+            allStats.push(runAnalysisSuite(parsed));
+          }
+        }
+        computedStats = allStats.join("\n\n");
+      }
     }
   } else {
     // JSON body
     const body = await req.json();
-    if (body.demo) {
-      dataDescription = await loadDemoData();
+    if (body.demoDataset) {
+      const { desc, stats } = await loadDemoDataset(body.demoDataset);
+      dataDescription = desc;
+      computedStats = stats;
+    } else if (body.demo) {
+      dataDescription = await loadLegacyDemoData();
     } else {
       dataDescription = body.data || "";
+      if (dataDescription) {
+        const parsed = parseCSV(dataDescription);
+        if (parsed.rows.length > 0) {
+          computedStats = runAnalysisSuite(parsed);
+        }
+      }
     }
   }
 
   if (!dataDescription) {
     return new Response(
-      JSON.stringify({ error: "No data provided. Upload files or use demo mode." }),
+      JSON.stringify({ error: "No data provided. Upload files or use a demo dataset." }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -75,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       try {
         // ---- STAGE 1: PROFILE ----
-        send("stage", { stage: "profiling", message: "Analyzing training artifacts..." });
+        send("stage", { stage: "profiling", message: "Profiling dataset..." });
 
         const profileRaw = await callClaude(anthropic, profilerPrompt(dataDescription));
         let profile: Record<string, unknown>;
@@ -135,7 +191,8 @@ export async function POST(req: NextRequest) {
             anthropic,
             experimenterPrompt(
               `${hyp.text}\nTest strategy: ${hyp.test_strategy}`,
-              `Profile: ${profileSummary}\n\nRaw data description:\n${dataDescription.slice(0, 4000)}`,
+              `Profile: ${profileSummary}\n\nRaw data description:\n${dataDescription.slice(0, 3000)}`,
+              computedStats || undefined,
             ),
           );
 
@@ -157,6 +214,10 @@ export async function POST(req: NextRequest) {
               supports_hypothesis: false,
             };
           }
+
+          // Clamp p-value and effect_size to valid ranges
+          expResult.p_value = Math.max(0, Math.min(1, expResult.p_value || 0.5));
+          expResult.effect_size = expResult.effect_size || 0;
 
           const result = {
             hypothesisId: hyp.id,
@@ -279,9 +340,50 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Load demo data from data/demo/ directory.
+ * Load a named demo dataset from data/demo-datasets/{name}/.
+ * Returns both a text description and pre-computed stats.
  */
-async function loadDemoData(): Promise<string> {
+async function loadDemoDataset(name: string): Promise<{ desc: string; stats: string }> {
+  const config = DEMO_DATASETS[name];
+  if (!config) {
+    throw new Error(`Unknown demo dataset: ${name}`);
+  }
+
+  const datasetDir = path.join(process.cwd(), "data", "demo-datasets", name);
+  const parts: string[] = [];
+  const csvTexts: string[] = [];
+
+  for (const file of config.files) {
+    try {
+      const content = await fs.readFile(path.join(datasetDir, file), "utf-8");
+      parts.push(`--- ${file} ---\n${content}`);
+      if (file.endsWith(".csv")) {
+        csvTexts.push(content);
+      }
+    } catch {
+      // Skip missing files
+    }
+  }
+
+  const desc = parts.join("\n\n");
+
+  // Run statistical analysis on CSV files
+  const statsParts: string[] = [];
+  for (const csvText of csvTexts) {
+    const parsed = parseCSV(csvText);
+    if (parsed.rows.length > 0) {
+      statsParts.push(runAnalysisSuite(parsed));
+    }
+  }
+  const stats = statsParts.join("\n\n");
+
+  return { desc, stats };
+}
+
+/**
+ * Load legacy demo data from data/demo/ directory.
+ */
+async function loadLegacyDemoData(): Promise<string> {
   const demoDir = path.join(process.cwd(), "data", "demo");
   const files = ["config.json", "loss.csv", "metrics.csv"];
   const parts: string[] = [];

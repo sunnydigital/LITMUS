@@ -1,43 +1,44 @@
 /**
  * prompts.ts - All 5 agent prompt templates for the LITMUS pipeline.
  *
- * Simplified: each function takes a string context and returns a string prompt.
- * No complex TypeScript interfaces. Pipeline stages parse JSON from Claude responses.
+ * Domain-agnostic prompts that work on ANY structured CSV data:
+ * clinical trials, A/B tests, SaaS metrics, ML monitoring, etc.
  */
 
 export function profilerPrompt(dataDescription: string): string {
-  return `You are LITMUS PROFILER. You analyze transformer training artifacts.
+  return `You are LITMUS PROFILER. You analyze structured datasets to identify their shape, quality, and key statistical properties.
 
-Given this training data:
+Given this dataset:
 ${dataDescription}
 
 Produce a structured profile. Analyze:
-1. Data inventory: what epochs/checkpoints are available?
-2. Model architecture: layers, heads, embedding dim (from config or weight shapes)
-3. Training trajectory: loss curve shape, gradient norm trends, convergence status
-4. Attention statistics: entropy distribution per head, per layer, over time
-5. Anomalies: gradient spikes, loss plateaus, sudden entropy changes, outlier epochs
+1. Data inventory: what columns/fields are available? How many rows/records?
+2. Column types: numeric, categorical, temporal — and their distributions
+3. Data quality: missing values, outliers, suspicious patterns
+4. Key statistics: means, variances, ranges for numeric columns
+5. Anomalies: unusual values, discontinuities, structural breaks, or data integrity issues
 
 Output ONLY valid JSON (no markdown fences):
 {
-  "epochs_available": [1, 2, "...up to max"],
-  "architecture": { "n_layer": number, "n_head": number, "n_embd": number },
+  "row_count": number,
+  "columns": [{ "name": string, "type": "numeric"|"categorical"|"temporal", "summary": string }],
+  "data_quality": { "missing_pct": number, "outlier_notes": string },
   "trajectory": { "converged": boolean, "plateau_epochs": number[], "spike_epochs": number[] },
-  "attention_summary": { "entropy_trend": string, "specialization_onset": number|null },
-  "anomalies": [{ "epoch": number, "type": string, "description": string }],
-  "summary": "2-3 sentence plain English summary of key patterns"
+  "attention_summary": { "entropy_trend": string, "specialization_onset": null },
+  "anomalies": [{ "epoch": number|null, "type": string, "description": string }],
+  "summary": "2-3 sentence plain English summary of what this dataset contains and its key characteristics"
 }`;
 }
 
 export function hypothesizerPrompt(profileSummary: string): string {
-  return `You are LITMUS HYPOTHESIZER. You generate ranked hypotheses about transformer training dynamics.
+  return `You are LITMUS HYPOTHESIZER. You generate ranked hypotheses about patterns, relationships, and anomalies in structured data.
 
-Profile summary:
+Dataset profile summary:
 ${profileSummary}
 
-Generate 3-5 hypotheses about what is happening in this model's training.
-Focus on: phase transitions, head specialization, algorithm compilation, grokking, emergent representations.
-Each must be TESTABLE with the available data.
+Generate 3-5 hypotheses about what is happening in this dataset.
+Focus on: causal relationships, temporal trends, group differences, confounders, spurious correlations, Simpson's paradox, treatment effects.
+Each must be TESTABLE with the available data using standard statistical methods.
 
 Rank by expected information gain (how much would confirming/denying this teach us?).
 
@@ -50,21 +51,33 @@ Output ONLY valid JSON (no markdown fences):
 }]`;
 }
 
-export function experimenterPrompt(hypothesis: string, dataContext: string): string {
-  return `You are LITMUS EXPERIMENTER. You reason through statistical tests on transformer training data.
+export function experimenterPrompt(
+  hypothesis: string,
+  dataContext: string,
+  computedStats?: string,
+): string {
+  const statsSection = computedStats
+    ? `\nPRE-COMPUTED STATISTICAL RESULTS (from actual data analysis):\n${computedStats}\n`
+    : "";
+
+  return `You are LITMUS EXPERIMENTER. You interpret statistical test results on structured data.
 
 Hypothesis to test:
 ${hypothesis}
 
 Available data context:
 ${dataContext}
-
-IMPORTANT: Do NOT write Python code. Instead, reason through what the appropriate statistical test would show given the data patterns described above. Analyze the data directly.
+${statsSection}
+${
+  computedStats
+    ? `IMPORTANT: Use the pre-computed statistics above as your primary evidence. Interpret these real computed numbers to evaluate the hypothesis. Do NOT make up p-values — use or derive from the computed results provided.`
+    : `IMPORTANT: Do NOT write Python code. Instead, reason through what the appropriate statistical test would show given the data patterns described above.`
+}
 
 For this hypothesis:
-1. Choose an appropriate test (KS test, changepoint detection, correlation analysis, t-test, etc.)
-2. Reason through what the test would find given the data
-3. Produce a realistic p-value and effect size based on the data patterns
+1. Choose an appropriate test (t-test, chi-square, correlation, changepoint detection, etc.)
+2. ${computedStats ? "Interpret the pre-computed results" : "Reason through what the test would find given the data patterns"}
+3. Produce a p-value and effect size ${computedStats ? "consistent with the computed statistics" : "based on the data patterns"}
 4. Interpret the result
 
 Output ONLY valid JSON (no markdown fences):
@@ -88,14 +101,14 @@ export function skepticPrompt(
 
 Hypothesis: ${hypothesis}
 p-value: ${pValue}
-Effect size (Cohen's d): ${effectSize}
+Effect size (Cohen's d or r): ${effectSize}
 Experiment result: ${experimentResult}
 
 Run checks 2-4 of the validation gauntlet (checks 1 and 5 are handled locally):
 
-2. CONFOUNDER SCAN: Could a confounding variable explain this? (e.g., learning rate schedule, batch size changes at that epoch)
-3. TEMPORAL STABILITY: Does this pattern hold across different training windows, or is it an artifact of one snapshot?
-4. HOLDOUT REPLICATION: If we split checkpoints into train/test, does the pattern replicate?
+2. CONFOUNDER SCAN: Could a confounding variable explain this? (e.g., selection bias, demographic imbalances, time-period effects, data collection artifacts)
+3. TEMPORAL STABILITY: Does this pattern hold across different time windows or subsets, or is it an artifact of one particular slice of the data?
+4. HOLDOUT REPLICATION: If we split the data into two halves, would the pattern replicate in both?
 
 For each check, output PASS or FAIL with 1-sentence reasoning.
 
@@ -118,7 +131,7 @@ ${findingsSummary}
 Write a discovery report in markdown. For each finding:
 1. **Title** (bold, specific)
 2. What was discovered (2-3 sentences, no jargon)
-3. Why it matters (1 sentence on implications for model design or training strategy)
+3. Why it matters (1 sentence on implications for decision-making or further investigation)
 4. Evidence summary (p-value, effect size, which checks passed)
 5. Confidence grade and surprise score
 

@@ -127,6 +127,15 @@ export default function Home() {
     runPipeline(formData);
   }, [runPipeline]);
 
+  const handleDemoDataset = useCallback(
+    (datasetId: string) => {
+      const formData = new FormData();
+      formData.append("demoDataset", datasetId);
+      runPipeline(formData);
+    },
+    [runPipeline],
+  );
+
   const handleReset = useCallback(() => {
     setStage("idle");
     setEvents([]);
@@ -141,7 +150,7 @@ export default function Home() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight">LITMUS</h1>
             <p className="text-zinc-400 mt-2">
-              Autonomous research agent that tries to debunk itself
+              Autonomous data exploration agent that tries to debunk itself
             </p>
           </div>
           {stage !== "idle" && (
@@ -159,6 +168,7 @@ export default function Home() {
         <DataUpload
           onUpload={handleUpload}
           onDemo={handleDemo}
+          onDemoDataset={handleDemoDataset}
           disabled={running}
         />
       ) : (
