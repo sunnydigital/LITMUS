@@ -13,7 +13,7 @@ import DataUpload from "@/components/DataUpload";
 import DiscoveryStream from "@/components/DiscoveryStream";
 
 interface SSEEvent {
-  type: "stage" | "result" | "complete" | "error";
+  type: "stage" | "result" | "complete" | "error" | "chart";
   data: Record<string, unknown>;
 }
 

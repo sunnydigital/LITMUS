@@ -8,8 +8,13 @@
  * validation badges, inline charts, and the final markdown report.
  */
 
-import DiscoveryChart from "@/components/DiscoveryChart";
+import dynamic from "next/dynamic";
 import type { ChartData } from "@/components/DiscoveryChart";
+
+const DiscoveryChart = dynamic(() => import("@/components/DiscoveryChart"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-zinc-900/50 border border-zinc-800 rounded-lg animate-pulse" />,
+});
 
 interface SSEEvent {
   type: "stage" | "result" | "complete" | "error" | "chart";
