@@ -207,7 +207,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
       {/* ── Pipeline tracker ── */}
-      <div className="card" style={{ padding: "16px 20px" }}>
+      <div className="glass-card" style={{ padding: "20px 24px" }}>
         <div className="stage-track" style={{ flexWrap: "wrap", gap: 4, rowGap: 8 }}>
           {STAGES.map((s, i) => {
             const done   = completedStages.has(s.key);
@@ -240,7 +240,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
 
       {/* ── Errors ── */}
       {errors.map((msg, i) => (
-        <div key={i} className="card" style={{ borderColor: "rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.05)" }}>
+        <div key={i} className="glass-card" style={{ borderColor: "rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.05)" }}>
           <div className="row">
             <span style={{ color: "#f87171" }}>✕</span>
             <span style={{ color: "#f87171", fontSize: 13 }}>{msg}</span>
@@ -267,7 +267,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
       {profileData && (
         <div>
           <p className="label" style={{ marginBottom: 10 }}>Dataset profile</p>
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="glass-card" style={{ padding: 0, overflow: "hidden" }}>
             {/* Summary row */}
             <div className="row" style={{ padding: "10px 14px", borderBottom: "1px solid #27272a", gap: 20, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, color: "#a1a1aa" }}>
@@ -427,7 +427,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
               const killed = grade === "C";
 
               return (
-                <div key={i} className="card" style={{ borderColor: gc.border }}>
+                <div key={i} className="glass-card" style={{ borderColor: gc.border }}>
                   {/* Finding header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
                     <p style={{ fontSize: 13, color: "#e4e4e7", lineHeight: 1.5, flex: 1 }}>
@@ -491,7 +491,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
 
       {/* ── Stats mini charts ── */}
       {allFindings.length > 1 && (
-        <div className="card">
+        <div className="glass-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
             <p className="label">Findings at a glance</p>
             <span style={{ fontSize: 11, color: "#3f3f46" }}>{allFindings.length} findings evaluated</span>
@@ -523,7 +523,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
 
       {/* ── Google Sheets ── */}
       {sheetsResult?.url && (
-        <div className="card" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
+        <div className="glass-card" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
           <div className="row" style={{ gap: 10 }}>
             <span style={{ fontSize: 18 }}>📊</span>
             <div>
@@ -555,7 +555,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
               </button>
             </div>
           </div>
-          <div className="card" style={{ borderColor: "rgba(52,211,153,0.15)" }}>
+          <div className="glass-card" style={{ borderColor: "rgba(52,211,153,0.15)" }}>
             <MarkdownReport text={report} />
           </div>
         </div>
@@ -563,7 +563,7 @@ export default function DiscoveryStream({ events, currentStage, report }: Discov
 
       {/* ── Loading state ── */}
       {!report && currentStage !== "error" && currentStage !== "idle" && currentStage !== "done" && (
-        <div className="card" style={{ padding: 24, textAlign: "center" }}>
+        <div className="glass-card" style={{ padding: 24, textAlign: "center" }}>
           <div style={{
             width: 28, height: 28, borderRadius: "50%",
             border: "2px solid #3f3f46", borderTopColor: "#6366f1",

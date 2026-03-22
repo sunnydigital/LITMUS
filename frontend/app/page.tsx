@@ -74,36 +74,80 @@ export default function Home() {
 
   return (
     <div className="container">
-      {/* Header */}
-      <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 40 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            {/* Logo mark */}
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, fontWeight: 800, color: "#fff",
-              boxShadow: "0 0 16px rgba(99,102,241,0.4)"
-            }}>L</div>
-            <h1 style={{
-              fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em",
-              background: "linear-gradient(135deg, #818cf8, #6366f1, #a78bfa)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
-            }}>LITMUS</h1>
-            <span className="badge badge-tag" style={{ fontSize: 10 }}>EmpireHacks 2026</span>
+      {/* Stunning Glassmorphism Header */}
+      <header className="mb-12 relative">
+        {/* Background decoration */}
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-10 -right-10 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex items-start justify-between relative">
+          <div className="flex-1">
+            {/* Logo + Title */}
+            <div className="flex items-center gap-4 mb-4">
+              {/* Animated Logo */}
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 
+                  flex items-center justify-center shadow-lg animate-glow"
+                  style={{
+                    boxShadow: '0 8px 32px rgba(99, 102, 241, 0.4), 0 0 60px rgba(139, 92, 246, 0.2)'
+                  }}
+                >
+                  <span className="text-2xl font-bold text-white">L</span>
+                </div>
+                {/* Orbiting ring */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-indigo-400/30 animate-spin" 
+                  style={{ animationDuration: '8s' }} />
+              </div>
+
+              <div>
+                <h1 className="text-4xl font-extrabold tracking-tight">
+                  <span className="text-gradient">LITMUS</span>
+                </h1>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="badge badge-tag">EmpireHacks 2026</span>
+                  <span className="text-xs text-zinc-600">The Operator Track</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tagline */}
+            <p className="text-zinc-400 text-[15px] max-w-xl leading-relaxed mb-2">
+              Autonomous research agent that{" "}
+              <span className="text-indigo-400 font-medium">challenges itself</span>{" "}
+              to find what's wrong before you do.
+            </p>
+            
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {["Statistical Rigor", "Self-Debunking", "5-Stage Pipeline", "Surprise Scoring"].map((tag, i) => (
+                <span 
+                  key={tag}
+                  className="px-3 py-1 rounded-full text-xs font-medium"
+                  style={{
+                    background: `rgba(99, 102, 241, ${0.1 + (i * 0.05)})`,
+                    color: i === 0 ? '#818cf8' : i === 1 ? '#a78bfa' : i === 2 ? '#c084fc' : '#f472b6',
+                    border: `1px solid rgba(99, 102, 241, ${0.2 + (i * 0.1)})`
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
-          <p style={{ color: "#52525b", fontSize: 13 }}>
-            Autonomous research agent that{" "}
-            <span style={{ color: "#818cf8" }}>tries to debunk itself</span>
-            {" "}— findings must survive a 5-check skeptic gauntlet.
-          </p>
+
+          {/* Reset button */}
+          {stage !== "idle" && (
+            <button 
+              className="btn btn-ghost animate-fade-up" 
+              onClick={handleReset}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              New Run
+            </button>
+          )}
         </div>
-        {stage !== "idle" && (
-          <button className="btn btn-ghost" onClick={handleReset} style={{ marginTop: 4 }}>
-            ← New Run
-          </button>
-        )}
       </header>
 
       {/* Content */}
@@ -114,8 +158,10 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer style={{ marginTop: 64, textAlign: "center", color: "#3f3f46", fontSize: 12 }}>
-        LITMUS v0.2 · EmpireHacks 2026 · Operator Track
+      <footer className="mt-20 pt-8 border-t border-white/5 text-center">
+        <p className="text-xs text-zinc-600">
+          <span className="text-gradient font-semibold">LITMUS</span> v0.2 · EmpireHacks 2026 · Operator Track
+        </p>
       </footer>
     </div>
   );

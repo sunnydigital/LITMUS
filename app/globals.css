@@ -251,6 +251,7 @@ body {
 .shadow-xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
 .shadow-2xl { box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.6); }
 .shadow-glow { box-shadow: var(--shadow-glow); }
+.shadow-glow-lg { box-shadow: 0 0 60px rgba(99, 102, 241, 0.4); }
 .shadow-accent { box-shadow: 0 0 30px rgba(99, 102, 241, 0.4); }
 .shadow-accent-lg { box-shadow: 0 0 50px rgba(99, 102, 241, 0.5); }
 .shadow-inner { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3); }
@@ -382,8 +383,8 @@ body {
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
 }
 .btn-primary:hover {
-  transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
 }
 .btn-primary:active {
   transform: translateY(0) scale(0.98);
@@ -392,6 +393,11 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+.btn-primary-lg {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  border-radius: 0.875rem;
 }
 
 .btn-secondary {
@@ -414,6 +420,11 @@ body {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: rgba(99, 102, 241, 0.4);
+}
+.btn-secondary-lg {
+  padding: 0.875rem 1.5rem;
+  font-size: 0.9375rem;
+  border-radius: 0.75rem;
 }
 
 .btn-ghost {
@@ -494,6 +505,16 @@ body {
 .tag:hover {
   background: rgba(99, 102, 241, 0.2);
   border-color: rgba(99, 102, 241, 0.4);
+}
+.tag-featured {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  background: rgba(99, 102, 241, 0.08);
+  backdrop-filter: blur(8px);
+}
+.tag-featured:hover {
+  background: rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
 .badge {
@@ -763,6 +784,10 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-25%); }
 }
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(4px); opacity: 0.6; }
+}
 
 .animate-fade-in { opacity: 0; animation: fadeIn 0.6s ease-out forwards; }
 .animate-fade-in-up { opacity: 0; animation: fadeInUp 0.6s ease-out forwards; }
@@ -775,6 +800,7 @@ body {
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-ping { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
 .animate-bounce { animation: bounce 1s ease-in-out infinite; }
+.animate-bounce-subtle { animation: bounce-subtle 1.5s ease-in-out infinite; }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
 .delay-75 { animation-delay: 75ms; }
@@ -1037,3 +1063,74 @@ body {
 /* Font Mono */
 .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .font-sans { font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif; }
+
+/* Pipeline Visual */
+.pipeline-visual {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  width: 140px;
+  transition: all 0.3s ease;
+}
+.pipeline-step:hover {
+  transform: translateY(-4px);
+  border-color: var(--step-color, var(--accent));
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+.pipeline-step-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--step-color, var(--accent-light));
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+}
+.pipeline-step:hover .pipeline-step-icon {
+  background: var(--step-color, var(--accent));
+  color: white;
+}
+.pipeline-step-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+.pipeline-step-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.pipeline-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  padding-top: 1.5rem;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .pipeline-visual {
+    flex-direction: column;
+    align-items: center;
+  }
+  .pipeline-arrow {
+    padding: 0.5rem 0;
+    transform: rotate(90deg);
+  }
+}

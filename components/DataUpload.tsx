@@ -114,7 +114,7 @@ interface DataUploadProps {
   disabled?: boolean;
 }
 
-export default function DataUpload({ onUpload, onDemoDataset, disabled }: DataUploadProps) {
+export default function DataUpload({ onUpload, onDemo, onDemoDataset, disabled }: DataUploadProps) {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-12">
       {/* Upload Card */}

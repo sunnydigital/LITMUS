@@ -169,51 +169,163 @@ export default function Home() {
             </nav>
 
             {/* Hero Section */}
-            <section className="flex-grow flex flex-col justify-center py-16">
+            <section className="flex-grow flex flex-col justify-center py-20">
               <div className="text-center max-w-4xl mx-auto">
                 {/* Logo */}
-                <div className="mb-8 animate-fade-in-up">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-accent to-purple-500 shadow-glow animate-stage-pulse">
-                    <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
+                <div className="mb-10 animate-fade-in-up">
+                  <div className="relative inline-flex">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl blur-xl opacity-40 animate-pulse" />
+                    <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-accent to-purple-500 shadow-glow-lg">
+                      <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
+                {/* Pre-title */}
+                <p className="text-sm font-medium tracking-widest uppercase text-accent-light mb-4 animate-fade-in-up delay-75">
+                  EmpireHacks 2026
+                </p>
+
                 {/* Title */}
-                <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 animate-fade-in-up delay-100">
+                <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-8 animate-fade-in-up delay-100">
                   <span className="gradient-text">LITMUS</span>
                 </h1>
 
                 {/* Tagline */}
-                <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto leading-relaxed mb-8 animate-fade-in-up delay-200">
-                  Autonomous data exploration agent that{" "}
-                  <span className="text-accent-light font-medium">challenges itself</span>{" "}
+                <p className="text-xl md:text-2xl text-zinc-300 max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in-up delay-200">
+                  Autonomous data exploration that{" "}
+                  <span className="relative">
+                    <span className="text-accent-light font-semibold">challenges itself</span>
+                  </span>{" "}
                   to find what&apos;s wrong before you do.
                 </p>
 
                 {/* Feature Tags */}
-                <div className="flex flex-wrap justify-center gap-3 mb-12 animate-fade-in-up delay-300">
-                  <span className="tag">Statistical Rigor</span>
-                  <span className="tag">Self-Debunking</span>
-                  <span className="tag">5-Stage Pipeline</span>
-                  <span className="tag">AI-Powered</span>
+                <div className="flex flex-wrap justify-center gap-3 mb-14 animate-fade-in-up delay-300">
+                  <span className="tag tag-featured">Statistical Rigor</span>
+                  <span className="tag tag-featured">Self-Debunking</span>
+                  <span className="tag tag-featured">5-Stage Pipeline</span>
+                  <span className="tag tag-featured">AI-Powered</span>
                 </div>
 
                 {/* CTA */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-400">
                   <button 
                     onClick={() => document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="btn-primary px-8 py-4 text-base shadow-accent"
+                    className="btn-primary btn-primary-lg shadow-accent"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     Start Exploring
                   </button>
-                  <button onClick={handleDemo} className="btn-secondary px-6 py-4">
+                  <button onClick={handleDemo} className="btn-secondary btn-secondary-lg">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                     Try Demo
                   </button>
+                </div>
+
+                {/* Scroll indicator */}
+                <div className="mt-16 animate-fade-in delay-700">
+                  <div className="inline-flex flex-col items-center gap-2 text-zinc-600">
+                    <span className="text-xs uppercase tracking-widest">Scroll to explore</span>
+                    <div className="w-6 h-10 rounded-full border-2 border-zinc-700 flex justify-center pt-2">
+                      <div className="w-1.5 h-2.5 bg-zinc-500 rounded-full animate-bounce-subtle" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* How It Works Section */}
+            <section className="py-20 border-t border-zinc-800/30">
+              <div className="text-center mb-16 animate-fade-in-up">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                  <span className="gradient-text-static">How It Works</span>
+                </h2>
+                <p className="text-zinc-400 max-w-xl mx-auto">
+                  LITMUS uses a rigorous 5-stage pipeline to explore your data and surface what others miss.
+                </p>
+              </div>
+
+              <div className="pipeline-visual">
+                <div className="pipeline-step" style={{ '--step-color': '#818cf8' } as React.CSSProperties}>
+                  <div className="pipeline-step-icon">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="pipeline-step-title">1. Profile</h3>
+                  <p className="pipeline-step-desc">Analyze your data structure and quality</p>
+                </div>
+
+                <div className="pipeline-arrow">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                <div className="pipeline-step" style={{ '--step-color': '#a78bfa' } as React.CSSProperties}>
+                  <div className="pipeline-step-icon">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <h3 className="pipeline-step-title">2. Hypothesize</h3>
+                  <p className="pipeline-step-desc">Generate testable hypotheses</p>
+                </div>
+
+                <div className="pipeline-arrow">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                <div className="pipeline-step" style={{ '--step-color': '#fbbf24' } as React.CSSProperties}>
+                  <div className="pipeline-step-icon">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                  </div>
+                  <h3 className="pipeline-step-title">3. Experiment</h3>
+                  <p className="pipeline-step-desc">Design and run statistical tests</p>
+                </div>
+
+                <div className="pipeline-arrow">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                <div className="pipeline-step" style={{ '--step-color': '#34d399' } as React.CSSProperties}>
+                  <div className="pipeline-step-icon">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="pipeline-step-title">4. Validate</h3>
+                  <p className="pipeline-step-desc">Verify findings with rigor</p>
+                </div>
+
+                <div className="pipeline-arrow">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+
+                <div className="pipeline-step" style={{ '--step-color': '#f472b6' } as React.CSSProperties}>
+                  <div className="pipeline-step-icon">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="pipeline-step-title">5. Report</h3>
+                  <p className="pipeline-step-desc">Generate actionable insights</p>
                 </div>
               </div>
             </section>
