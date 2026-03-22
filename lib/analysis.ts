@@ -54,7 +54,7 @@ export interface SimpsonsParadoxResult {
 }
 
 export interface ChartData {
-  type: "bar" | "grouped-bar" | "line" | "forest";
+  type: "bar" | "grouped-bar" | "line" | "multi-line" | "forest";
   title: string;
   data: Record<string, unknown>[];
   config: Record<string, unknown>;
@@ -803,21 +803,65 @@ export function generateChartData(parsed: ParsedCSV): ChartData[] {
 
   // --- Line chart for time-series data ---
   // Look for a time column (day, month, week, date, time, period)
-  const timeColNames = ["day", "month", "week", "date", "time", "period", "timestamp"];
+  const timeColNames = ["day", "month", "week", "date", "time", "period", "timestamp", "epoch", "step", "iteration"];
   const timeCol =
     numCols.find((c) => timeColNames.some((t) => c.toLowerCase().includes(t))) ||
     catCols.find((c) => timeColNames.some((t) => c.toLowerCase().includes(t)));
 
   if (timeCol) {
-    // Find primary metrics to chart (exclude the time column itself)
-    const metricsToChart = numCols.filter((c) => c !== timeCol).slice(0, 4);
+    const timeVals = parsed.numericColumns[timeCol] || [];
+
+    // Special case: detect paired columns like train_loss/val_loss for dual-line chart
+    const lossCols = numCols.filter((c) =>
+      c.toLowerCase().includes("loss") && c !== timeCol
+    );
+    if (lossCols.length >= 2) {
+      // Dual-line loss chart (e.g., train_loss + val_loss)
+      const allChangepoints: number[] = [];
+      for (const col of lossCols) {
+        const cp = detectChangepoints(parsed.numericColumns[col], 2.0);
+        allChangepoints.push(...cp.indices);
+      }
+
+      // Also detect gradient spikes if gradient_norm column exists
+      const gradCol = numCols.find((c) => c.toLowerCase().includes("gradient"));
+      const gradAnomalies = gradCol ? zScoreAnomalies(parsed.numericColumns[gradCol], 20) : { indices: [] as number[] };
+
+      const chartDataPoints = parsed.rows.map((row, idx) => {
+        const point: Record<string, unknown> = {
+          x: timeVals[idx] ?? idx,
+          isGradientSpike: gradAnomalies.indices.includes(idx),
+        };
+        for (const col of lossCols) {
+          point[col] = Number(row[col]);
+        }
+        return point;
+      });
+
+      charts.push({
+        type: "multi-line",
+        title: `Loss Curves (${lossCols.join(" + ")})`,
+        data: chartDataPoints,
+        config: {
+          xKey: "x",
+          lineKeys: lossCols,
+          xLabel: timeCol,
+          yLabel: "loss",
+          changepoints: [...new Set(allChangepoints)],
+          gradientSpikes: gradAnomalies.indices,
+        },
+      });
+    }
+
+    // Find primary metrics to chart (exclude the time column and already-charted loss cols)
+    const chartedCols = new Set(lossCols);
+    const metricsToChart = numCols.filter((c) => c !== timeCol && !chartedCols.has(c)).slice(0, 4);
 
     for (const metricCol of metricsToChart) {
       const vals = parsed.numericColumns[metricCol];
       const cp = detectChangepoints(vals, 2.0);
       const anomalies = zScoreAnomalies(vals, 20);
 
-      const timeVals = parsed.numericColumns[timeCol] || [];
       const chartDataPoints = parsed.rows.map((row, idx) => {
         const point: Record<string, unknown> = {
           x: timeVals[idx] ?? idx,

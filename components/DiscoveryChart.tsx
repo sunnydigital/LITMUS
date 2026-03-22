@@ -32,7 +32,7 @@ import {
 // ---- Types ----
 
 export interface ChartData {
-  type: "bar" | "grouped-bar" | "line" | "forest";
+  type: "bar" | "grouped-bar" | "line" | "multi-line" | "forest";
   title: string;
   data: Record<string, unknown>[];
   config: Record<string, unknown>;
@@ -160,6 +160,78 @@ function TimeSeriesLineChart({ chart }: { chart: ChartData }) {
   );
 }
 
+function MultiLineChart({ chart }: { chart: ChartData }) {
+  const xKey = (chart.config.xKey as string) || "x";
+  const lineKeys = (chart.config.lineKeys as string[]) || [];
+  const xLabel = (chart.config.xLabel as string) || "";
+  const yLabel = (chart.config.yLabel as string) || "";
+  const changepoints = (chart.config.changepoints as number[]) || [];
+  const gradientSpikes = (chart.config.gradientSpikes as number[]) || [];
+
+  const lineColors = [COLORS.indigo, COLORS.green, COLORS.amber, COLORS.red];
+
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <LineChart data={chart.data} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.zinc800} />
+        <XAxis
+          dataKey={xKey}
+          tick={{ fill: COLORS.zinc400, fontSize: 11 }}
+          axisLine={{ stroke: COLORS.zinc800 }}
+          tickLine={false}
+          label={{ value: xLabel, position: "insideBottom", fill: COLORS.zinc400, fontSize: 11, dy: 20 }}
+        />
+        <YAxis
+          tick={{ fill: COLORS.zinc400, fontSize: 11 }}
+          axisLine={{ stroke: COLORS.zinc800 }}
+          tickLine={false}
+          label={{ value: yLabel, angle: -90, position: "insideLeft", fill: COLORS.zinc400, fontSize: 11, dy: 40 }}
+          tickFormatter={(v) => (typeof v === "number" ? v.toFixed(1) : String(v))}
+        />
+        <Tooltip contentStyle={DARK_TOOLTIP_STYLE} formatter={(v: unknown, name: unknown) => [typeof v === "number" ? v.toFixed(4) : String(v), String(name ?? "")]} />
+        <Legend wrapperStyle={{ color: COLORS.zinc400, fontSize: "11px", paddingTop: "8px" }} />
+        {changepoints.map((cpIdx, i) => {
+          const cpPoint = chart.data[cpIdx];
+          if (!cpPoint) return null;
+          return (
+            <ReferenceLine
+              key={`cp-${i}`}
+              x={cpPoint[xKey] as number | string}
+              stroke={COLORS.amber}
+              strokeDasharray="4 2"
+              label={{ value: "▲", position: "top", fill: COLORS.amber, fontSize: 9 }}
+            />
+          );
+        })}
+        {gradientSpikes.map((spIdx, i) => {
+          const spPoint = chart.data[spIdx];
+          if (!spPoint) return null;
+          return (
+            <ReferenceLine
+              key={`spike-${i}`}
+              x={spPoint[xKey] as number | string}
+              stroke={COLORS.red}
+              strokeDasharray="2 3"
+              strokeOpacity={0.6}
+            />
+          );
+        })}
+        {lineKeys.map((key, i) => (
+          <Line
+            key={key}
+            type="monotone"
+            dataKey={key}
+            stroke={lineColors[i % lineColors.length]}
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 3, fill: lineColors[i % lineColors.length] }}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 function ForestPlotChart({ chart }: { chart: ChartData }) {
   const xKey = (chart.config.xKey as string) || "cohensD";
   const yKey = (chart.config.yKey as string) || "endpoint";
@@ -232,6 +304,7 @@ export default function DiscoveryChart({ chart }: DiscoveryChartProps) {
       {chart.type === "grouped-bar" && <GroupedBarChart chart={chart} />}
       {chart.type === "bar" && <GroupedBarChart chart={chart} />}
       {chart.type === "line" && <TimeSeriesLineChart chart={chart} />}
+      {chart.type === "multi-line" && <MultiLineChart chart={chart} />}
       {chart.type === "forest" && <ForestPlotChart chart={chart} />}
     </div>
   );

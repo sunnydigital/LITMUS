@@ -34,6 +34,10 @@ const DEMO_DATASETS: Record<string, { label: string; files: string[] }> = {
     label: "ML Feature Drift",
     files: ["config.json", "monitoring.csv"],
   },
+  "grokking": {
+    label: "Grokking Detection (Transformer Training)",
+    files: ["config.json", "loss.csv", "metrics.csv"],
+  },
 };
 
 /**

@@ -39,6 +39,12 @@ const DEMO_DATASETS: DemoDataset[] = [
     description: "90 days of ML model monitoring: gradual feature drift, a pipeline bug, and a seasonal pattern.",
     tags: ["ML Ops", "Drift"],
   },
+  {
+    id: "grokking",
+    name: "Grokking Detection",
+    description: "Transformer training run with phase transitions, gradient spikes, and attention head specialization over 100 epochs.",
+    tags: ["ML Training", "Temporal"],
+  },
 ];
 
 interface DataUploadProps {

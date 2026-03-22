@@ -1,0 +1,12 @@
+{
+  "experiment": "NanoGPT Training Run",
+  "description": "100 epochs of transformer training data with grokking phase transition, gradient spikes, and attention head specialization",
+  "dataset": "shakespeare_char",
+  "architecture": { "n_layer": 6, "n_head": 6, "n_embd": 384 },
+  "hidden_phenomena": [
+    "grokking_phase_transition_epoch_45_50",
+    "gradient_norm_spikes_epoch_12_and_47",
+    "attention_head_specialization_after_epoch_30",
+    "gradient_spikes_precede_phase_transitions"
+  ]
+}
