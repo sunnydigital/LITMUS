@@ -1,8 +1,10 @@
 # LITMUS
 
-**Find hidden dynamics in your transformer training runs.**
+**Autonomous research agent that tries to debunk itself.**
 
-Upload loss curves, gradient norms, and attention entropy from a NanoGPT-scale run. LITMUS profiles the data, generates hypotheses about emergent behavior, validates them, and reports what it finds.
+Upload any structured dataset. LITMUS profiles it, generates hypotheses ranked by surprise, runs experiments, then attempts to kill its own findings through a 5-check validation gauntlet. Only what survives gets reported.
+
+> "Three findings generated. One killed by confounder scan. Two survived with Grade A. Here's the proof."
 
 ## Track: The Operator (EmpireHacks 2026)
 
@@ -17,20 +19,23 @@ cp .env.example .env
 npm run dev
 ```
 
-Open http://localhost:3000. Click **Run Demo** to use built-in synthetic training data.
+Open http://localhost:3000. Click **Run Demo** to use built-in demo data.
 
 One API key, one command, full pipeline.
 
 ## What It Does
 
-LITMUS is a transformer interpretability tool built on an autonomous agent pipeline. You give it training artifacts. It tells you what happened during training.
+Upload a dataset. LITMUS finds what you missed, then tries to prove itself wrong.
 
-| Discovery Type | Example |
+| Step | What happens |
 |---|---|
-| Phase transitions | "Loss plateau breaks at epoch 47 with 40% entropy drop" |
-| Head specialization | "Heads diverge from uniform entropy after epoch 30" |
-| Grokking | "Val loss plateaus 15 epochs after train converges, then drops sharply" |
-| Gradient events | "Gradient norm spikes precede phase transitions by 2-3 epochs" |
+| Profile | Reads your data. Identifies structure, distributions, anomalies. |
+| Hypothesize | Generates ranked hypotheses by expected information gain. |
+| Experiment | Runs statistical tests. Real numbers, not narration. |
+| Validate | 5-check skeptic gauntlet tries to kill each finding. |
+| Report | Survivors get graded (A/B/C), ranked by surprise, narrated. |
+
+The system that validates everything validates nothing. LITMUS shows you the corpses alongside the survivors.
 
 ## Architecture
 
@@ -40,20 +45,20 @@ One API route (`/api/discover`) runs 5 pipeline stages sequentially, streaming p
 Upload files (or click "Run Demo")
      |
      v
-[1. PROFILER]       Claude reads the CSVs, identifies patterns, outputs structured JSON
+[1. PROFILER]       Reads data, identifies structure and anomalies
      |
      v
-[2. HYPOTHESIZER]   Claude generates ranked hypotheses about training dynamics
+[2. HYPOTHESIZER]   Generates ranked hypotheses by information gain
      |
      v
-[3. EXPERIMENTER]   Runs real numerical analysis on parsed data, Claude interprets results
+[3. EXPERIMENTER]   Runs numerical analysis, Claude interprets results
      |                ** needs lib/analysis.ts built - see TASKS.md #2 **
      |
      v
-[4. SKEPTIC]        2 local checks (BH-FDR, effect size) + 3 Claude reasoning checks
+[4. SKEPTIC]        5-check gauntlet: BH-FDR, confounders, temporal, holdout, effect size
      |
      v
-[5. NARRATOR]       Final discovery report in markdown
+[5. NARRATOR]       Final discovery report with grades and surprise scores
 ```
 
 ### What runs locally vs what's Claude
@@ -64,20 +69,24 @@ Upload files (or click "Run Demo")
 | Effect size threshold | `lib/skeptic.ts` | - |
 | KL divergence scoring | `lib/surprise.ts` | - |
 | Numerical analysis | `lib/analysis.ts` **(needs building)** | - |
-| Data profiling | - | Reads raw CSVs |
+| Data profiling | - | Reads raw data |
 | Hypothesis generation | - | Generates and ranks |
 | Result interpretation | - | Narrates real numbers |
 | Confounder/temporal/holdout | - | Reasons about validity |
 
-The critical task is building `lib/analysis.ts` so the experimenter stage runs real computations (changepoint detection, z-scores, correlations, t-tests) and passes those numbers to Claude for interpretation. See TASKS.md #2.
+The critical task is building `lib/analysis.ts` so the experimenter runs real computations and passes those numbers to Claude for interpretation. See TASKS.md #2.
 
-## Demo Data
+## The Skeptic Gauntlet
 
-`data/demo/` contains synthetic NanoGPT training data with documented phenomena baked in:
+Every finding passes 5 checks before being reported:
 
-- **loss.csv** - 100 epochs, grokking phase transition at epoch 45-50
-- **metrics.csv** - Gradient norm spikes at epoch 12 and 47, attention head divergence after epoch 30
-- **config.json** - 6-layer, 6-head, 384-dim model on shakespeare_char
+1. **Multiple Testing** - Benjamini-Hochberg FDR correction (local)
+2. **Confounder Scan** - Could a third variable explain this? (Claude)
+3. **Temporal Stability** - Does it hold across different data windows? (Claude)
+4. **Holdout Replication** - Does it replicate on held-out data? (Claude)
+5. **Effect Size Filter** - Cohen's d > 0.3, practically meaningful? (local)
+
+Grades: **A** = 5/5 pass | **B** = 4/5 pass | **C** = archived (< 4 pass)
 
 ## Surprise Score
 
@@ -90,6 +99,12 @@ surprise     = KL divergence from expected distribution (lib/surprise.ts)
 significance = -log10(adjusted_p_value)
 effect_size  = |Cohen's d| or |r|
 ```
+
+Obvious confirmations get deprioritized even at p < 0.001.
+
+## Demo Data
+
+`data/demo/` contains synthetic ML training data with patterns baked in for demonstration. Click "Run Demo" to see the full pipeline in action. Upload your own CSVs to discover patterns in any structured dataset.
 
 ## Stack
 
@@ -119,10 +134,7 @@ lib/
   surprise.ts                  # Discovery score ranking (REAL MATH)
   analysis.ts                  # ** NEEDS BUILDING ** Real numerical analysis
 data/
-  demo/
-    loss.csv                   # Synthetic training loss (grokking pattern)
-    metrics.csv                # Gradient norms, attention entropy, weight norms
-    config.json                # Model architecture config
+  demo/                        # Demo dataset for showcase
 ```
 
 ## Team
@@ -133,9 +145,3 @@ data/
 | Sunny | Frontend, visualization, upload flow |
 | Kanishkha | Domain research, experiment design |
 | Nirbhaya | Statistical validation, data handling |
-
-## References
-
-- [Mechanistic Interpretability](https://transformer-circuits.pub/)
-- [A Mathematical Framework for Transformer Circuits](https://transformer-circuits.pub/2021/framework/index.html)
-- [Grokking: Generalization Beyond Overfitting](https://arxiv.org/abs/2201.02177)

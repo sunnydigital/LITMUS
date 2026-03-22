@@ -6,10 +6,10 @@
 
 1. Click "Run Demo" (or upload CSVs)
 2. Claude profiles the data (JSON output)
-3. Claude generates 3-5 hypotheses about training dynamics
+3. Claude generates 3-5 hypotheses ranked by information gain
 4. For each hypothesis: run numerical analysis locally, Claude interprets results
-5. Validation: BH-FDR correction + effect size threshold (local) + Claude reasoning checks
-6. Claude writes final discovery report in markdown
+5. Validation: 5-check skeptic gauntlet tries to kill each finding
+6. Claude writes final discovery report with grades and surprise scores
 7. Everything streams to frontend via SSE
 
 Step 4 needs `lib/analysis.ts` built (Task #2) to run real computations.
@@ -129,13 +129,6 @@ Options:
 | `data/demo/loss.csv` | 100 epochs of synthetic training loss with grokking. | CSV |
 | `data/demo/metrics.csv` | Gradient norms, attention entropy, weight norms per epoch. | CSV |
 
-## Domain Context
+## Demo Data
 
-LITMUS analyzes what happens during transformer model training. Key phenomena:
-
-- **Grokking:** Model memorizes training data first, then suddenly generalizes much later. Train loss drops early, val loss stays flat, then drops sharply.
-- **Phase transitions:** Sudden capability jumps. Loss curve has plateaus that break abruptly.
-- **Head specialization:** Attention heads start uniform, then specialize. Visible as entropy divergence across heads.
-- **Gradient spikes:** Gradient norm jumps, often 2-3 epochs before a phase transition.
-
-Our synthetic demo data has all four patterns baked in.
+The `data/demo/` directory has synthetic ML training data with patterns baked in. This is one example domain. The pipeline is general-purpose: any structured CSV with patterns to discover works. The demo data just guarantees the pipeline has something to find during a showcase.
