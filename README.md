@@ -125,7 +125,8 @@ npm run dev
 |---|---|---|
 | Agent architecture + prompts | Amadeus | 5-stage pipeline, Claude integration, skeptic gauntlet |
 | Frontend + viz | Sunny | Next.js UI, Plotly charts, upload flow, dashboard |
-| Execution sandbox + probing | TBD | E2B integration, torch probing classifiers, statistical tests |
+| Research + validation | Kanishkha | Domain research, experiment design, statistical rigor |
+| Execution sandbox + probing | Nirbhaya | E2B integration, torch probing classifiers, statistical tests |
 
 ## File Structure
 

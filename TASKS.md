@@ -1,6 +1,6 @@
 # LITMUS - Open Tasks
 
-**EmpireHacks 2026 | Operator Track | Team: Amadeus, Sunny, Kanishkha, +1**
+**EmpireHacks 2026 | Operator Track | Team: Amadeus, Sunny, Kanishkha, Nirbhaya**
 
 ## Concept Pivot (READ FIRST)
 
