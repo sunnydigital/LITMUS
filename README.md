@@ -14,7 +14,7 @@ Every "upload a CSV, get insights" tool exists already. None of them answer the 
 
 Training a transformer is an opaque process. Loss goes down. Perplexity improves. But inside the weights, algorithms are being compiled, attention heads are specializing, phase transitions are firing. Nobody has a tool that autonomously discovers these phenomena and validates them.
 
-LITMUS applies a rigorous scientific discovery loop to transformer internals. Inspired by [Mentat](https://github.com/quantbagel/mentat) (compiled computation in transformer weights), we treat model training as an archaeological site. The artifacts: weight snapshots, attention maps, gradient norms, loss curves. The discoveries: emergent algorithms, phase transitions, head specialization, grokking.
+LITMUS applies a rigorous scientific discovery loop to transformer internals. We treat model training as an archaeological site. The artifacts: weight snapshots, attention maps, gradient norms, loss curves. The discoveries: emergent algorithms, phase transitions, head specialization, grokking.
 
 ## 5-Stage Discovery Pipeline
 
@@ -65,7 +65,7 @@ TRAINING ARTIFACTS (weight snapshots, attention maps, loss curves, gradient norm
 |---|---|---|
 | Phase transitions | "Loss plateau breaks at epoch 47 with 40% entropy drop" | Changepoint detection on attention entropy time series |
 | Head specialization | "Head 3 becomes positional, head 7 becomes content after epoch 20" | Probing classifiers on attention patterns per head |
-| Compiled algorithms | "Binary addition circuit in layers 4-6, matching Mentat reference" | Weight pattern matching against compiled kernels |
+| Compiled algorithms | "Binary addition circuit emerging in layers 4-6" | Weight pattern matching against known algorithmic signatures |
 | Grokking | "Test generalization delayed 30 epochs after train convergence" | Train/test divergence analysis with temporal lag correlation |
 | Emergent notation | "Model invents intermediate token types not in training data" | Embedding cluster analysis over training time |
 
@@ -155,6 +155,5 @@ lib/
 
 ## References
 
-- [Mentat: Compiled Computation in Transformers](https://github.com/quantbagel/mentat)
-- [NanoChat](https://github.com/karpathy/nanochat) (NanoGPT successor)
 - [Mechanistic Interpretability](https://transformer-circuits.pub/)
+- [A Mathematical Framework for Transformer Circuits](https://transformer-circuits.pub/2021/framework/index.html)
