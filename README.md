@@ -11,8 +11,8 @@ Upload any structured dataset. LITMUS profiles it, generates hypotheses ranked b
 ## Quick Start
 
 ```bash
-git clone https://github.com/sunnydigital/LITMUS.git
-cd LITMUS
+git clone https://github.com/sunnydigital/litmus.git
+cd litmus
 npm install
 cp .env.example .env
 # Add your ANTHROPIC_API_KEY to .env
