@@ -141,7 +141,7 @@ export default function Home() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight">LITMUS</h1>
             <p className="text-zinc-400 mt-2">
-              Autonomous discovery agent for transformer training dynamics
+              Find hidden dynamics in your transformer training runs
             </p>
           </div>
           {stage !== "idle" && (

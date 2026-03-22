@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LITMUS",
   description:
-    "Autonomous discovery agent for transformer training dynamics",
+    "Find hidden dynamics in your transformer training runs",
 };
 
 export default function RootLayout({
