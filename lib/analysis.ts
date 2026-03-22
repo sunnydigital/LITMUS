@@ -533,13 +533,15 @@ export function detectSimpsonsParadox(
 export function runAnalysisSuite(parsed: ParsedCSV): string {
   const lines: string[] = [];
   const numCols = Object.keys(parsed.numericColumns);
+  const catCols = Object.keys(parsed.categoricalColumns);
 
   lines.push(`=== COMPUTED STATISTICS (from actual data) ===`);
-  lines.push(`Rows: ${parsed.rows.length}, Numeric columns: ${numCols.length}`);
+  lines.push(`Rows: ${parsed.rows.length}, Numeric columns: ${numCols.length}, Categorical columns: ${catCols.length}`);
+  lines.push(`Column names: ${parsed.headers.join(", ")}`);
   lines.push(``);
 
   // Per-column stats
-  for (const col of numCols.slice(0, 10)) {
+  for (const col of numCols.slice(0, 15)) {
     const vals = parsed.numericColumns[col].filter((v) => !isNaN(v));
     if (vals.length === 0) continue;
     const m = mean(vals);
@@ -547,9 +549,15 @@ export function runAnalysisSuite(parsed: ParsedCSV): string {
     const sorted = [...vals].sort((a, b) => a - b);
     const min = sorted[0];
     const max = sorted[sorted.length - 1];
+    const median = sorted[Math.floor(sorted.length / 2)];
+
+    // Detect if column is binary (0/1)
+    const uniqueVals = [...new Set(vals)];
+    const isBinary = uniqueVals.length === 2 && uniqueVals.every(v => v === 0 || v === 1);
+    const typeNote = isBinary ? " [binary 0/1]" : "";
 
     lines.push(
-      `Column "${col}": n=${vals.length}, mean=${m.toFixed(4)}, sd=${sd.toFixed(4)}, min=${min.toFixed(4)}, max=${max.toFixed(4)}`,
+      `Column "${col}"${typeNote}: n=${vals.length}, mean=${m.toFixed(4)}, sd=${sd.toFixed(4)}, median=${median.toFixed(4)}, min=${min.toFixed(4)}, max=${max.toFixed(4)}`,
     );
 
     // Changepoints
@@ -571,10 +579,28 @@ export function runAnalysisSuite(parsed: ParsedCSV): string {
 
   lines.push(``);
 
-  // Pairwise correlations for first few numeric columns
+  // Categorical column summaries
+  if (catCols.length > 0) {
+    lines.push(`--- Categorical Column Summaries ---`);
+    for (const col of catCols) {
+      const vals = parsed.categoricalColumns[col];
+      const counts: Record<string, number> = {};
+      for (const v of vals) {
+        if (v && v !== "NaN") counts[v] = (counts[v] || 0) + 1;
+      }
+      const summary = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([v, n]) => `${v}:${n}`)
+        .join(", ");
+      lines.push(`  "${col}": ${summary}`);
+    }
+    lines.push(``);
+  }
+
+  // Pairwise correlations for numeric columns
   if (numCols.length >= 2) {
     lines.push(`--- Pairwise Correlations ---`);
-    const colPairs = numCols.slice(0, 6);
+    const colPairs = numCols.slice(0, 10);
     for (let i = 0; i < colPairs.length; i++) {
       for (let j = i + 1; j < colPairs.length; j++) {
         const c = pearsonCorrelation(
@@ -591,17 +617,25 @@ export function runAnalysisSuite(parsed: ParsedCSV): string {
     lines.push(``);
   }
 
-  // Group comparisons for categorical columns
-  const catCols = Object.keys(parsed.categoricalColumns);
+  // Group comparisons: ALL categorical × ALL numeric combinations
   if (catCols.length > 0 && numCols.length > 0) {
-    lines.push(`--- Group Comparisons ---`);
-    for (const catCol of catCols.slice(0, 3)) {
+    lines.push(`--- Group Comparisons (t-tests for ALL categorical×numeric pairs) ---`);
+
+    // Identify likely treatment/group columns (2-5 unique values)
+    const treatmentCols = catCols.filter(col => {
+      const uniq = [...new Set(parsed.categoricalColumns[col].filter(v => v && v !== "NaN"))];
+      return uniq.length >= 2 && uniq.length <= 5;
+    });
+
+    for (const catCol of treatmentCols) {
       const groups = [...new Set(parsed.categoricalColumns[catCol])].filter(
         (v) => v && v !== "NaN",
       );
       if (groups.length < 2 || groups.length > 10) continue;
 
-      for (const numCol of numCols.slice(0, 3)) {
+      lines.push(`  Group variable: "${catCol}" (${groups.join(", ")})`);
+
+      for (const numCol of numCols) {
         const groupData: Record<string, number[]> = {};
         for (const g of groups) {
           groupData[g] = parsed.rows
@@ -612,12 +646,92 @@ export function runAnalysisSuite(parsed: ParsedCSV): string {
 
         if (groups.length === 2) {
           const t = twoSampleTTest(groupData[groups[0]], groupData[groups[1]]);
-          if (t.pValue < 0.1 || Math.abs(t.cohensD) > 0.2) {
+          lines.push(
+            `    "${catCol}" (${groups[0]} vs ${groups[1]}) → "${numCol}": ` +
+              `t=${t.tStat.toFixed(3)}, p=${t.pValue.toFixed(4)}, d=${t.cohensD.toFixed(3)}, ` +
+              `mean_${groups[0]}=${t.meanA.toFixed(4)}, mean_${groups[1]}=${t.meanB.toFixed(4)}, ` +
+              `n_${groups[0]}=${groupData[groups[0]].length}, n_${groups[1]}=${groupData[groups[1]].length}`,
+          );
+        } else {
+          // Multi-group: report all pairwise
+          for (let gi = 0; gi < groups.length; gi++) {
+            for (let gj = gi + 1; gj < groups.length; gj++) {
+              const gA = groups[gi];
+              const gB = groups[gj];
+              if ((groupData[gA]?.length ?? 0) < 2 || (groupData[gB]?.length ?? 0) < 2) continue;
+              const t = twoSampleTTest(groupData[gA], groupData[gB]);
+              lines.push(
+                `    "${catCol}" (${gA} vs ${gB}) → "${numCol}": ` +
+                  `t=${t.tStat.toFixed(3)}, p=${t.pValue.toFixed(4)}, d=${t.cohensD.toFixed(3)}, ` +
+                  `mean_${gA}=${t.meanA.toFixed(4)}, mean_${gB}=${t.meanB.toFixed(4)}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    lines.push(``);
+  }
+
+  // Simpson's Paradox detection: ALL plausible (outcome, treatment, stratifier) combos
+  // Identify binary outcome columns and treatment columns
+  const binaryNumCols = numCols.filter(col => {
+    const vals = parsed.numericColumns[col].filter(v => !isNaN(v));
+    const uniq = [...new Set(vals)];
+    return uniq.length === 2 && uniq.every(v => v === 0 || v === 1);
+  });
+
+  const treatmentCatCols = catCols.filter(col => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter(v => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 3;
+  });
+
+  const stratifierCatCols = catCols.filter(col => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter(v => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 10;
+  });
+
+  if (binaryNumCols.length > 0 && treatmentCatCols.length > 0 && stratifierCatCols.length > 0) {
+    lines.push(`--- Simpson's Paradox Detection ---`);
+
+    for (const outCol of binaryNumCols) {
+      for (const treatCol of treatmentCatCols) {
+        for (const stratCol of stratifierCatCols) {
+          if (stratCol === treatCol) continue; // Don't stratify by treatment itself
+
+          const result = detectSimpsonsParadox(parsed, outCol, treatCol, stratCol);
+
+          const strataStr = Object.entries(result.strataDiffs)
+            .map(([k, v]) => `${k}:${v.toFixed(4)}`)
+            .join(", ");
+
+          lines.push(
+            `  outcome="${outCol}", treatment="${treatCol}", stratifier="${stratCol}":`,
+          );
+          lines.push(
+            `    overall_diff=${result.overallDiff.toFixed(4)}, strata_diffs={${strataStr}}, paradox=${result.paradoxDetected}`,
+          );
+          lines.push(`    ${result.description}`);
+        }
+      }
+    }
+    lines.push(``);
+  }
+
+  // Also run Simpson's with continuous outcomes if no binary cols found
+  if (binaryNumCols.length === 0 && numCols.length > 0 && treatmentCatCols.length >= 2) {
+    lines.push(`--- Simpson's Paradox Detection (continuous outcomes) ---`);
+    const outCols = numCols.slice(0, 5);
+    for (const outCol of outCols) {
+      for (const treatCol of treatmentCatCols) {
+        for (const stratCol of treatmentCatCols) {
+          if (stratCol === treatCol) continue;
+          const result = detectSimpsonsParadox(parsed, outCol, treatCol, stratCol);
+          if (result.paradoxDetected) {
             lines.push(
-              `  "${catCol}" (${groups[0]} vs ${groups[1]}) on "${numCol}": ` +
-                `t=${t.tStat.toFixed(3)}, p=${t.pValue.toFixed(4)}, d=${t.cohensD.toFixed(3)}, ` +
-                `mean_A=${t.meanA.toFixed(3)}, mean_B=${t.meanB.toFixed(3)}`,
+              `  PARADOX DETECTED: outcome="${outCol}", treatment="${treatCol}", stratifier="${stratCol}"`,
             );
+            lines.push(`    ${result.description}`);
           }
         }
       }
