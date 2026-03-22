@@ -1,18 +1,16 @@
 # LITMUS
 
-**Autonomous discovery agent for transformer training dynamics.**
+**Find hidden dynamics in your transformer training runs.**
 
-Upload training artifacts from any NanoGPT-scale run. LITMUS profiles the data, generates hypotheses about emergent behavior, runs statistical experiments, tries to kill its own findings, and reports only what survives.
-
-> "Your model compiled a binary adder into heads 3 and 7 at epoch 47. Here's the proof."
+Upload loss curves, gradient norms, and attention entropy from a NanoGPT-scale run. LITMUS profiles the data, generates hypotheses about emergent behavior, validates them, and reports what it finds.
 
 ## Track: The Operator (EmpireHacks 2026)
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/sunnydigital/empirehacks.git
-cd empirehacks
+git clone https://github.com/sunnydigital/LITMUS.git
+cd LITMUS
 npm install
 cp .env.example .env
 # Add your ANTHROPIC_API_KEY to .env
@@ -21,32 +19,11 @@ npm run dev
 
 Open http://localhost:3000. Click **Run Demo** to use built-in synthetic training data.
 
-That is it. One API key, one command, full pipeline.
+One API key, one command, full pipeline.
 
-## How It Works
+## What It Does
 
-One API route (`/api/discover`) runs 5 pipeline stages sequentially, streaming progress via SSE:
-
-```
-Upload files (or click "Run Demo")
-     |
-     v
-[1. PROFILER]       Analyze training artifacts: loss curves, gradient norms, attention entropy
-     |
-     v
-[2. HYPOTHESIZER]   Generate ranked hypotheses about training dynamics
-     |
-     v
-[3. EXPERIMENTER]   Claude reasons through statistical tests on the data
-     |
-     v
-[4. SKEPTIC]        5-check validation gauntlet (BH-FDR, confounders, temporal, holdout, effect size)
-     |
-     v
-[5. NARRATOR]       Final discovery report in markdown
-```
-
-## What It Discovers
+LITMUS is a transformer interpretability tool built on an autonomous agent pipeline. You give it training artifacts. It tells you what happened during training.
 
 | Discovery Type | Example |
 |---|---|
@@ -55,6 +32,53 @@ Upload files (or click "Run Demo")
 | Grokking | "Val loss plateaus 15 epochs after train converges, then drops sharply" |
 | Gradient events | "Gradient norm spikes precede phase transitions by 2-3 epochs" |
 
+## Architecture
+
+One API route (`/api/discover`) runs 5 pipeline stages sequentially, streaming progress via SSE:
+
+```
+Upload files (or click "Run Demo")
+     |
+     v
+[1. PROFILER]       Claude reads the CSVs, identifies patterns, outputs structured JSON
+     |
+     v
+[2. HYPOTHESIZER]   Claude generates ranked hypotheses about training dynamics
+     |
+     v
+[3. EXPERIMENTER]   Runs real numerical analysis on parsed data, Claude interprets results
+     |                ** needs lib/analysis.ts built - see TASKS.md #2 **
+     |
+     v
+[4. SKEPTIC]        2 local checks (BH-FDR, effect size) + 3 Claude reasoning checks
+     |
+     v
+[5. NARRATOR]       Final discovery report in markdown
+```
+
+### What runs locally vs what's Claude
+
+| Component | Local | Claude |
+|---|---|---|
+| BH-FDR correction | `lib/skeptic.ts` | - |
+| Effect size threshold | `lib/skeptic.ts` | - |
+| KL divergence scoring | `lib/surprise.ts` | - |
+| Numerical analysis | `lib/analysis.ts` **(needs building)** | - |
+| Data profiling | - | Reads raw CSVs |
+| Hypothesis generation | - | Generates and ranks |
+| Result interpretation | - | Narrates real numbers |
+| Confounder/temporal/holdout | - | Reasons about validity |
+
+The critical task is building `lib/analysis.ts` so the experimenter stage runs real computations (changepoint detection, z-scores, correlations, t-tests) and passes those numbers to Claude for interpretation. See TASKS.md #2.
+
+## Demo Data
+
+`data/demo/` contains synthetic NanoGPT training data with documented phenomena baked in:
+
+- **loss.csv** - 100 epochs, grokking phase transition at epoch 45-50
+- **metrics.csv** - Gradient norm spikes at epoch 12 and 47, attention head divergence after epoch 30
+- **config.json** - 6-layer, 6-head, 384-dim model on shakespeare_char
+
 ## Surprise Score
 
 Findings ranked by unexpectedness, not just significance:
@@ -62,26 +86,18 @@ Findings ranked by unexpectedness, not just significance:
 ```
 discovery_score = surprise x significance x effect_size
 
-surprise     = KL divergence from expected distribution
+surprise     = KL divergence from expected distribution (lib/surprise.ts)
 significance = -log10(adjusted_p_value)
 effect_size  = |Cohen's d| or |r|
 ```
-
-## Demo Data
-
-The `data/demo/` directory contains synthetic nanoGPT training data with baked-in patterns:
-
-- **loss.csv** - 100 epochs with a grokking phase transition at epoch 45-50
-- **metrics.csv** - Gradient norm spikes, attention head divergence, weight norm acceleration
-- **config.json** - 6-layer, 6-head, 384-dim model on shakespeare_char
 
 ## Stack
 
 | Layer | Tool |
 |---|---|
-| Reasoning | Claude claude-sonnet-4-5-20250929 (Anthropic) |
-| Validation | BH-FDR correction + effect size checks (local) |
-| Scoring | KL divergence surprise ranking |
+| Reasoning | Claude Sonnet 4.5 (Anthropic) |
+| Validation | BH-FDR correction + effect size (local) |
+| Scoring | KL divergence surprise ranking (local) |
 | Frontend | Next.js 16 + Tailwind 4 |
 | Deploy | Vercel |
 
@@ -98,9 +114,10 @@ components/
   DataUpload.tsx               # File upload + "Run Demo" button
   DiscoveryStream.tsx          # Renders pipeline timeline + results + report
 lib/
-  prompts.ts                   # 5 agent prompt templates (simplified)
-  skeptic.ts                   # BH-FDR correction + effect size check
-  surprise.ts                  # Discovery score ranking
+  prompts.ts                   # 5 agent prompt templates
+  skeptic.ts                   # BH-FDR correction + effect size check (REAL MATH)
+  surprise.ts                  # Discovery score ranking (REAL MATH)
+  analysis.ts                  # ** NEEDS BUILDING ** Real numerical analysis
 data/
   demo/
     loss.csv                   # Synthetic training loss (grokking pattern)
@@ -121,3 +138,4 @@ data/
 
 - [Mechanistic Interpretability](https://transformer-circuits.pub/)
 - [A Mathematical Framework for Transformer Circuits](https://transformer-circuits.pub/2021/framework/index.html)
+- [Grokking: Generalization Beyond Overfitting](https://arxiv.org/abs/2201.02177)
