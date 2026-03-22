@@ -8,151 +8,114 @@ Upload training artifacts from any NanoGPT-scale run. LITMUS profiles the data, 
 
 ## Track: The Operator (EmpireHacks 2026)
 
-## Why Transformers, Not Tabular Data
-
-Every "upload a CSV, get insights" tool exists already. None of them answer the question researchers actually care about: **what is my model learning, and when?**
-
-Training a transformer is an opaque process. Loss goes down. Perplexity improves. But inside the weights, algorithms are being compiled, attention heads are specializing, phase transitions are firing. Nobody has a tool that autonomously discovers these phenomena and validates them.
-
-LITMUS applies a rigorous scientific discovery loop to transformer internals. We treat model training as an archaeological site. The artifacts: weight snapshots, attention maps, gradient norms, loss curves. The discoveries: emergent algorithms, phase transitions, head specialization, grokking.
-
-## 5-Stage Discovery Pipeline
-
-```
-TRAINING ARTIFACTS (weight snapshots, attention maps, loss curves, gradient norms)
-     |
-     v
-[1. PROFILER]
-     Schema inference, distribution analysis, temporal patterns
-     Weight norm trajectories, attention entropy over time
-     Outlier epochs, gradient explosion/vanishing census
-     |
-     v
-[2. HYPOTHESIZER]
-     Ranked by expected information gain x surprise score
-     "Phase transition at epoch 47: attention entropy drops 40%"
-     "Heads 3+7 specialize for positional encoding after epoch 20"
-     "Grokking: test loss plateaus 30 epochs before sudden improvement"
-     |
-     v                    <-- feedback loop
-[3. EXPERIMENTER]         |
-     Writes + executes statistical tests in E2B sandbox     |
-     scipy, statsmodels, sklearn, torch probing             |
-     Ablation studies, probing classifiers, synthetic inputs |
-     Results update belief state ------>------>------>-------+
-     |
-     v
-[4. SKEPTIC] (5-check gauntlet)
-     1. Multiple testing correction (Benjamini-Hochberg FDR)
-     2. Confounder scan (partial correlations)
-     3. Temporal stability (does pattern hold across training windows?)
-     4. Holdout replication (validate on held-out weight snapshots)
-     5. Effect size filter (Cohen's d > 0.3)
-     |
-     Confidence: A (5/5) | B (4/5) | C (failed, archived with reasoning)
-     |
-     v
-[5. NARRATOR]
-     Plain-English findings with cited evidence
-     Embedded Plotly visualizations
-     Surprise-ranked: discovery_score = surprise x significance x effect_size
-     Push to Google Sheets (Operator requirement)
-```
-
-## What It Discovers
-
-| Discovery Type | Example | How |
-|---|---|---|
-| Phase transitions | "Loss plateau breaks at epoch 47 with 40% entropy drop" | Changepoint detection on attention entropy time series |
-| Head specialization | "Head 3 becomes positional, head 7 becomes content after epoch 20" | Probing classifiers on attention patterns per head |
-| Compiled algorithms | "Binary addition circuit emerging in layers 4-6" | Weight pattern matching against known algorithmic signatures |
-| Grokking | "Test generalization delayed 30 epochs after train convergence" | Train/test divergence analysis with temporal lag correlation |
-| Emergent notation | "Model invents intermediate token types not in training data" | Embedding cluster analysis over training time |
-
-## Stack
-
-| Layer | Tool | Purpose |
-|---|---|---|
-| Reasoning | Claude (Anthropic) | Hypothesis generation, code generation, narration |
-| Vision | Claude Vision | Parse training plots, architecture diagrams |
-| Execution | E2B Sandbox | Safe Python execution (scipy, torch, statsmodels) |
-| Statistics | scipy, statsmodels, pingouin | KS tests, partial correlations, FDR, changepoint |
-| Probing | torch, sklearn | Probing classifiers, ablation, synthetic inputs |
-| Visualization | Plotly | Interactive charts in discovery reports |
-| Frontend | Next.js 16 + Tailwind | Upload UI, reasoning stream, dashboard |
-| Output | Google Sheets API | Push discoveries to external systems |
-| State | In-memory | Belief state, hypothesis tree, experiment log |
-| Deploy | Vercel | One-click |
-
-## Surprise Score (Ranking)
-
-Findings ranked by unexpectedness, not just significance:
-
-```
-discovery_score = surprise x significance x effect_size
-
-surprise    = KL divergence from expected distribution
-significance = -log10(adjusted_p_value)
-effect_size  = |Cohen's d| or |r|
-```
-
-Obvious confirmations deprioritized even at p < 0.001.
-
-## Demo Flow (3 min)
-
-1. Upload training artifacts from a NanoGPT run (weight snapshots every 10 epochs, loss CSV, attention maps)
-2. Profiler: "23 layers, 8 heads, 50 epochs. Gradient norm spike at epoch 12. Attention entropy bimodal."
-3. Hypothesizer generates 7 ranked hypotheses. Top: "Phase transition at epoch 12 triggered by gradient spike."
-4. Experimenter: runs changepoint detection, KS test on pre/post weight distributions, probing classifier on head activations
-5. Skeptic gauntlet: 4/5 pass (temporal stability marginal). Grade B.
-6. Narrator: "Your model underwent a phase transition at epoch 12. Heads 3 and 7 specialized for positional encoding. Effect size: d=1.4. Gradient norm spike preceded the transition by 2 epochs, suggesting instability triggers reorganization."
-7. Push to Google Sheets.
-
-## Setup
+## Quick Start
 
 ```bash
 git clone https://github.com/sunnydigital/empirehacks.git
 cd empirehacks
 npm install
 cp .env.example .env
-# Fill in: ANTHROPIC_API_KEY, E2B_API_KEY, GOOGLE_SHEETS_API_KEY
+# Add your ANTHROPIC_API_KEY to .env
 npm run dev
 ```
 
-## Team
+Open http://localhost:3000. Click **Run Demo** to use built-in synthetic training data.
 
-| Role | Person | Focus |
-|---|---|---|
-| Agent architecture + prompts | Amadeus | 5-stage pipeline, Claude integration, skeptic gauntlet |
-| Frontend + viz | Sunny | Next.js UI, Plotly charts, upload flow, dashboard |
-| Research + validation | Kanishkha | Domain research, experiment design, statistical rigor |
-| Execution sandbox + probing | Nirbhaya | E2B integration, torch probing classifiers, statistical tests |
+That is it. One API key, one command, full pipeline.
+
+## How It Works
+
+One API route (`/api/discover`) runs 5 pipeline stages sequentially, streaming progress via SSE:
+
+```
+Upload files (or click "Run Demo")
+     |
+     v
+[1. PROFILER]       Analyze training artifacts: loss curves, gradient norms, attention entropy
+     |
+     v
+[2. HYPOTHESIZER]   Generate ranked hypotheses about training dynamics
+     |
+     v
+[3. EXPERIMENTER]   Claude reasons through statistical tests on the data
+     |
+     v
+[4. SKEPTIC]        5-check validation gauntlet (BH-FDR, confounders, temporal, holdout, effect size)
+     |
+     v
+[5. NARRATOR]       Final discovery report in markdown
+```
+
+## What It Discovers
+
+| Discovery Type | Example |
+|---|---|
+| Phase transitions | "Loss plateau breaks at epoch 47 with 40% entropy drop" |
+| Head specialization | "Heads diverge from uniform entropy after epoch 30" |
+| Grokking | "Val loss plateaus 15 epochs after train converges, then drops sharply" |
+| Gradient events | "Gradient norm spikes precede phase transitions by 2-3 epochs" |
+
+## Surprise Score
+
+Findings ranked by unexpectedness, not just significance:
+
+```
+discovery_score = surprise x significance x effect_size
+
+surprise     = KL divergence from expected distribution
+significance = -log10(adjusted_p_value)
+effect_size  = |Cohen's d| or |r|
+```
+
+## Demo Data
+
+The `data/demo/` directory contains synthetic nanoGPT training data with baked-in patterns:
+
+- **loss.csv** - 100 epochs with a grokking phase transition at epoch 45-50
+- **metrics.csv** - Gradient norm spikes, attention head divergence, weight norm acceleration
+- **config.json** - 6-layer, 6-head, 384-dim model on shakespeare_char
+
+## Stack
+
+| Layer | Tool |
+|---|---|
+| Reasoning | Claude claude-sonnet-4-5-20250929 (Anthropic) |
+| Validation | BH-FDR correction + effect size checks (local) |
+| Scoring | KL divergence surprise ranking |
+| Frontend | Next.js 16 + Tailwind 4 |
+| Deploy | Vercel |
 
 ## File Structure
 
 ```
 app/
-  page.tsx                    # Main UI: upload + discovery stream
-  layout.tsx                  # Root layout
-  globals.css                 # Base styles
+  page.tsx                     # Single page: upload or stream results
+  layout.tsx                   # Root layout
+  globals.css                  # Tailwind + CSS vars
   api/
-    profile/route.ts          # Profiler agent endpoint
-    hypothesize/route.ts      # Hypothesizer agent endpoint
-    experiment/route.ts       # Experimenter agent endpoint
-    validate/route.ts         # Skeptic agent endpoint
-    narrate/route.ts          # Narrator agent endpoint
+    discover/route.ts          # Single orchestrator: all 5 stages via SSE
 components/
-  DataUpload.tsx              # Training artifact upload (weight snapshots, CSVs)
-  HypothesisList.tsx          # Ranked hypotheses with surprise scores
-  ExperimentResult.tsx        # Statistical test results + Plotly charts
-  ValidationBadge.tsx         # A/B/C grade per skeptic check
-  DiscoveryReport.tsx         # Final narrated findings
+  DataUpload.tsx               # File upload + "Run Demo" button
+  DiscoveryStream.tsx          # Renders pipeline timeline + results + report
 lib/
-  prompts.ts                  # All 5 agent prompt templates
-  skeptic.ts                  # 5-check validation gauntlet
-  surprise.ts                 # Surprise score ranking
-  sandbox.ts                  # E2B sandbox integration
+  prompts.ts                   # 5 agent prompt templates (simplified)
+  skeptic.ts                   # BH-FDR correction + effect size check
+  surprise.ts                  # Discovery score ranking
+data/
+  demo/
+    loss.csv                   # Synthetic training loss (grokking pattern)
+    metrics.csv                # Gradient norms, attention entropy, weight norms
+    config.json                # Model architecture config
 ```
+
+## Team
+
+| Person | Focus |
+|---|---|
+| Amadeus | Pipeline architecture, prompts, skeptic gauntlet |
+| Sunny | Frontend, visualization, upload flow |
+| Kanishkha | Domain research, experiment design |
+| Nirbhaya | Statistical validation, data handling |
 
 ## References
 

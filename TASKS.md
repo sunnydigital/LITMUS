@@ -1,151 +1,89 @@
-# LITMUS - Open Tasks
+# LITMUS - Task Board
 
 **EmpireHacks 2026 | Team: Amadeus, Sunny, Kanishkha, Nirbhaya**
 
-## Concept Pivot (READ FIRST)
+## Architecture (v0.2)
+Single route (`/api/discover`) streams all 5 pipeline stages via SSE.
+Single page app with two components: DataUpload + DiscoveryStream.
+No E2B sandbox. No Google Sheets. Claude reasons through everything.
 
-The original LITMUS pitch targeted generic tabular data (CSVs, hospital readmissions, etc.). We've pivoted the domain to **transformer training dynamics**. Same 5-stage pipeline, radically more interesting target.
-
-**What changed from the HTML pitch:**
-- Input is now training artifacts (weight snapshots, loss CSVs, attention maps, gradient logs) instead of generic CSVs
-- Hypotheses are about transformer internals (phase transitions, head specialization, grokking, emergent algorithms) instead of generic correlations
-- Experimenter runs torch probing classifiers and ablation studies instead of just scipy tests
-- Demo uses NanoGPT training artifacts instead of hospital data
-
-**What stayed the same:**
-- 5-stage pipeline: Profiler > Hypothesizer > Experimenter > Skeptic > Narrator
-- Skeptic gauntlet (5 checks, A/B/C grading)
-- Surprise score ranking (KL x significance x effect_size)
-- Google Sheets push (external system integration)
-- SSE streaming for real-time reasoning display
-
----
-
-## Task Breakdown
+## Tasks
 
 ### P0: Must Ship (blocks demo)
 
-#### 1. Wire Profiler agent
-- Connect `/api/profile` to Anthropic SDK
-- SSE streaming response
-- Parse uploaded training artifacts (loss CSVs, config JSONs)
-- Return structured profile (epochs, architecture, trajectory, anomalies)
-- **Acceptance:** Upload a loss.csv, get back JSON profile with epoch count and anomaly detection
+#### 1. Test full demo pipeline end-to-end
+- Run demo mode, verify all 5 stages stream correctly
+- Check that JSON parsing works for each Claude response
+- Verify SSE events arrive in correct order on frontend
+- **Acceptance:** Click "Run Demo", see all 5 stages complete, report renders
 
-#### 2. Wire Hypothesizer agent
-- Connect `/api/hypothesize` to Anthropic SDK
-- Takes profile output + prior experiment results
-- Returns ranked hypotheses with surprise scores
-- Implements feedback loop (experiment results feed back in)
-- **Acceptance:** Given a profile, returns 3-7 testable hypotheses ranked by info gain
+#### 2. Handle API key missing gracefully
+- Check for ANTHROPIC_API_KEY on server startup
+- Return clear error message if missing
+- Show setup instructions on frontend
+- **Acceptance:** Clone, forget .env, see helpful error instead of crash
 
-#### 3. Wire Experimenter agent
-- Connect `/api/experiment` to Anthropic SDK + E2B sandbox
-- Claude generates Python test script
-- Script executes in E2B (scipy, torch, statsmodels, plotly)
-- Parse p-value, effect size, plot from output
-- **Acceptance:** Given a hypothesis, generates and runs a statistical test, returns structured result with Plotly chart
-
-#### 4. Wire Skeptic gauntlet
-- Connect `/api/validate` to Anthropic SDK for checks 2-4
-- Checks 1 (FDR) and 5 (effect size) already implemented in `lib/skeptic.ts`
-- Claude evaluates confounders, temporal stability, holdout design
-- Assign A/B/C grade
-- **Acceptance:** Given experiment results, returns 5 check results and a grade
-
-#### 5. Wire Narrator agent
-- Connect `/api/narrate` to Anthropic SDK
-- SSE streaming markdown report
-- Include Plotly figure references
-- Push summary to Google Sheets
-- **Acceptance:** Validated findings in, markdown report out, pushed to Sheets
-
-#### 6. Frontend: Discovery stream UI
-- Real-time display of pipeline stages (profiling... hypothesizing... experimenting...)
-- Show hypothesis tree (active branches, dead branches grayed out)
-- Embed Plotly charts from experiment results
-- Show skeptic gauntlet results (pass/fail badges)
-- **Acceptance:** User sees live pipeline progress and can follow reasoning
-
-#### 7. Demo data: Training artifacts
-- Generate or source training artifacts from a small NanoGPT-scale run:
-  - loss.csv (train_loss, val_loss, epoch)
-  - Gradient norm log
-  - Attention entropy per head per epoch (can be synthetic/simulated)
-  - Model config JSON
-- Does NOT need to be real training data. Synthetic is fine for demo.
-- **Acceptance:** A complete set of artifacts that produces interesting discoveries when fed to LITMUS
+#### 3. Add timeout/error handling for Claude calls
+- Wrap each Claude call in try/catch with timeout
+- Stream error events to frontend on failure
+- Allow partial results (if profile works but hypothesize fails, show profile)
+- **Acceptance:** Kill network mid-pipeline, see error message not blank screen
 
 ### P1: Should Ship (makes demo compelling)
 
-#### 8. Plotly chart rendering in frontend
-- Parse Plotly JSON from experiment results
-- Render interactive charts in ExperimentResult component
-- **Acceptance:** Charts visible and interactive in browser
+#### 4. Streaming within Claude calls
+- Use Anthropic streaming API to show reasoning tokens as they arrive
+- Stream partial text for narration stage
+- **Acceptance:** See text appear word-by-word during narration
 
-#### 9. Google Sheets integration
-- Wire googleapis SDK
-- Push discovery summaries (title, grade, surprise score, p-value) to a Google Sheet
-- **Acceptance:** After pipeline runs, a Google Sheet populates with findings
+#### 5. Loss curve visualization
+- Parse loss.csv from demo data
+- Render a simple chart (CSS-based or SVG) showing train/val loss
+- Highlight the grokking phase transition
+- **Acceptance:** Visual loss curve visible after profiling stage
 
-#### 10. Feedback loop visualization
-- Show how experiment results feed back into hypothesizer
-- Animate hypothesis tree growth/pruning
-- **Acceptance:** Visible feedback loop in UI
+#### 6. Loading skeleton states
+- Show skeleton/shimmer during each Claude call
+- Show stage duration after completion
+- **Acceptance:** No blank gaps between stage transitions
+
+#### 7. Drag-and-drop file upload
+- Add drag-and-drop zone to DataUpload component
+- Visual feedback on drag over
+- **Acceptance:** Drag CSV files onto page, pipeline starts
 
 ### P2: Nice to Have
 
-#### 11. Multi-round discovery
-- Run pipeline for 2-3 rounds (each round generates new hypotheses from prior results)
-- Show convergence: hypothesis quality improves each round
+#### 8. Multi-round hypothesis refinement
+- Re-run hypothesizer with experiment results as context
+- Show how hypotheses evolve across rounds
+- **Acceptance:** 2+ rounds visible, hypotheses get more specific
 
-#### 12. Directed testing mode
-- User provides a specific hypothesis ("Is there a phase transition at epoch X?")
-- Pipeline skips hypothesizer, goes straight to experimenter
+#### 9. PDF export of report
+- Generate downloadable PDF from final markdown report
+- Include validation badges and scores
+- **Acceptance:** Click export, get PDF
 
-#### 13. Training artifact parsing
-- Auto-detect .pt file structure (weight shapes, layer count)
-- Extract attention patterns from saved model checkpoints
-- This is hard and may not be needed for demo (synthetic data works)
-
----
-
-## Architecture Notes for Team
-
-### How the pipeline flows (code path):
-
-```
-1. User uploads files -> DataUpload.tsx -> FormData POST to /api/profile
-2. /api/profile -> profilerPrompt() -> Claude -> structured profile JSON
-3. Profile JSON -> POST to /api/hypothesize
-4. /api/hypothesize -> hypothesizerPrompt() -> Claude -> ranked hypotheses
-5. Top hypothesis -> POST to /api/experiment
-6. /api/experiment -> experimenterPrompt() -> Claude generates Python code -> E2B executes -> results
-7. Results -> POST to /api/validate
-8. /api/validate -> skepticPrompt() + runGauntlet() -> grade
-9. All graded findings -> POST to /api/narrate
-10. /api/narrate -> narratorPrompt() -> Claude -> markdown report + Google Sheets push
-11. Steps 3-8 repeat (feedback loop): experiment results feed back into hypothesizer
-```
-
-### Key files to understand:
-
-- `lib/prompts.ts` - All 5 agent prompts. Read these first.
-- `lib/skeptic.ts` - BH-FDR correction and gauntlet runner. Check 1 and 5 are implemented.
-- `lib/surprise.ts` - Scoring and ranking. Fully implemented.
-- `lib/sandbox.ts` - E2B stub. Needs to be wired to real SDK.
-- `app/page.tsx` - Main UI state management. All components wired here.
-
-### ENV vars needed:
-```
-ANTHROPIC_API_KEY    - Claude API
-E2B_API_KEY          - Code interpreter sandbox
-GOOGLE_SHEETS_API_KEY - For output push
-GOOGLE_SHEETS_SPREADSHEET_ID - Target sheet
-```
+#### 10. Mobile responsive layout
+- Test and fix layout on phone screens
+- **Acceptance:** Usable on iPhone Safari
 
 ---
 
-## Communication
+## Key Files
 
-Push to main freely. Tag in Discord if blocked.
+- `app/api/discover/route.ts` - Single orchestrator. All 5 stages here.
+- `lib/prompts.ts` - All 5 agent prompts. Simplified interfaces.
+- `lib/skeptic.ts` - BH-FDR correction + effect size check. Local validation.
+- `lib/surprise.ts` - Discovery score ranking. Fully implemented.
+- `components/DiscoveryStream.tsx` - Renders the full SSE event stream.
+- `components/DataUpload.tsx` - File upload + demo button.
+- `data/demo/` - Synthetic nanoGPT training data.
+
+## ENV
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+That is it. One key.

@@ -1,180 +1,128 @@
 /**
  * prompts.ts - All 5 agent prompt templates for the LITMUS pipeline.
  *
- * Each prompt is a function that takes context (profile data, hypotheses,
- * experiment results) and returns a structured prompt for Claude.
- *
- * Prompt design principles:
- *   - Structured output (JSON schema) for programmatic parsing
- *   - Chain-of-thought reasoning visible in output
- *   - Domain-specific vocabulary (transformer architecture terms)
- *   - Explicit constraints on hallucination
+ * Simplified: each function takes a string context and returns a string prompt.
+ * No complex TypeScript interfaces. Pipeline stages parse JSON from Claude responses.
  */
 
-export interface ProfileContext {
-  fileManifest: { name: string; type: string; size: number }[];
-  schema?: Record<string, string>;
-  summary?: string;
-}
-
-export interface HypothesisContext {
-  profile: ProfileContext;
-  priorHypotheses: { text: string; status: string; grade?: string }[];
-  experimentResults: { hypothesisId: string; outcome: string }[];
-}
-
-export interface ExperimentContext {
-  hypothesis: string;
-  profileSummary: string;
-  availableData: string[];
-}
-
-export interface ValidationContext {
-  hypothesis: string;
-  experimentCode: string;
-  experimentResult: string;
-  pValue: number;
-  effectSize: number;
-}
-
-export interface NarrationContext {
-  validatedFindings: {
-    hypothesis: string;
-    grade: "A" | "B" | "C";
-    evidence: string;
-    surpriseScore: number;
-  }[];
-}
-
-export function profilerPrompt(ctx: ProfileContext): string {
+export function profilerPrompt(dataDescription: string): string {
   return `You are LITMUS PROFILER. You analyze transformer training artifacts.
 
-Given these uploaded files:
-${ctx.fileManifest.map((f) => `- ${f.name} (${f.type}, ${f.size} bytes)`).join("\n")}
+Given this training data:
+${dataDescription}
 
-Produce a structured profile:
+Produce a structured profile. Analyze:
 1. Data inventory: what epochs/checkpoints are available?
 2. Model architecture: layers, heads, embedding dim (from config or weight shapes)
 3. Training trajectory: loss curve shape, gradient norm trends, convergence status
 4. Attention statistics: entropy distribution per head, per layer, over time
 5. Anomalies: gradient spikes, loss plateaus, sudden entropy changes, outlier epochs
 
-Output JSON:
+Output ONLY valid JSON (no markdown fences):
 {
-  "epochs_available": number[],
+  "epochs_available": [1, 2, "...up to max"],
   "architecture": { "n_layer": number, "n_head": number, "n_embd": number },
   "trajectory": { "converged": boolean, "plateau_epochs": number[], "spike_epochs": number[] },
-  "attention_summary": { "entropy_mean": number, "entropy_std": number, "bimodal": boolean },
-  "anomalies": [{ "epoch": number, "type": string, "description": string }]
+  "attention_summary": { "entropy_trend": string, "specialization_onset": number|null },
+  "anomalies": [{ "epoch": number, "type": string, "description": string }],
+  "summary": "2-3 sentence plain English summary of key patterns"
 }`;
 }
 
-export function hypothesizerPrompt(ctx: HypothesisContext): string {
+export function hypothesizerPrompt(profileSummary: string): string {
   return `You are LITMUS HYPOTHESIZER. You generate ranked hypotheses about transformer training dynamics.
 
 Profile summary:
-${ctx.profile.summary || "No profile yet."}
+${profileSummary}
 
-Prior hypotheses and outcomes:
-${ctx.priorHypotheses.map((h) => `- [${h.status}${h.grade ? ` (${h.grade})` : ""}] ${h.text}`).join("\n") || "None yet."}
-
-Recent experiment results:
-${ctx.experimentResults.map((r) => `- Hypothesis ${r.hypothesisId}: ${r.outcome}`).join("\n") || "None yet."}
-
-Generate 3-7 NEW hypotheses about what is happening in this model's training.
+Generate 3-5 hypotheses about what is happening in this model's training.
 Focus on: phase transitions, head specialization, algorithm compilation, grokking, emergent representations.
-Do NOT repeat prior hypotheses. Each must be TESTABLE with the available data.
+Each must be TESTABLE with the available data.
 
 Rank by expected information gain (how much would confirming/denying this teach us?).
 
-Output JSON array:
+Output ONLY valid JSON (no markdown fences):
 [{
-  "id": string,
-  "text": string,
-  "expected_info_gain": number (0-1),
-  "test_strategy": string (1-2 sentences: what statistical test would validate this?)
+  "id": "h1",
+  "text": "hypothesis statement",
+  "surprise_prior": 0.0 to 1.0 (how surprising would confirmation be?),
+  "test_strategy": "1-2 sentences: what statistical test would validate this?"
 }]`;
 }
 
-export function experimenterPrompt(ctx: ExperimentContext): string {
-  return `You are LITMUS EXPERIMENTER. You write and execute statistical tests on transformer training data.
+export function experimenterPrompt(hypothesis: string, dataContext: string): string {
+  return `You are LITMUS EXPERIMENTER. You reason through statistical tests on transformer training data.
 
 Hypothesis to test:
-${ctx.hypothesis}
+${hypothesis}
 
-Available data:
-${ctx.availableData.join(", ")}
+Available data context:
+${dataContext}
 
-Profile summary:
-${ctx.profileSummary}
+IMPORTANT: Do NOT write Python code. Instead, reason through what the appropriate statistical test would show given the data patterns described above. Analyze the data directly.
 
-Write a Python script that:
-1. Loads the relevant training artifacts
-2. Runs an appropriate statistical test (KS test, changepoint detection, probing classifier, etc.)
-3. Computes p-value and effect size (Cohen's d or correlation r)
-4. Generates a Plotly figure showing the evidence
-5. Returns structured results
+For this hypothesis:
+1. Choose an appropriate test (KS test, changepoint detection, correlation analysis, t-test, etc.)
+2. Reason through what the test would find given the data
+3. Produce a realistic p-value and effect size based on the data patterns
+4. Interpret the result
 
-Use: scipy, statsmodels, sklearn, torch, plotly, numpy, pandas.
-Script must be self-contained (will run in E2B sandbox).
-
-Output JSON:
+Output ONLY valid JSON (no markdown fences):
 {
-  "code": string (full Python script),
-  "test_name": string,
-  "expected_output": { "p_value": "float", "effect_size": "float", "plot": "plotly JSON" }
+  "test_name": "name of statistical test",
+  "reasoning": "2-3 sentences explaining the analysis",
+  "p_value": number (0 to 1),
+  "effect_size": number (Cohen's d or correlation r),
+  "interpretation": "1-2 sentence interpretation of what this means",
+  "supports_hypothesis": true or false
 }`;
 }
 
-export function skepticPrompt(ctx: ValidationContext): string {
+export function skepticPrompt(
+  hypothesis: string,
+  pValue: number,
+  effectSize: number,
+  experimentResult: string,
+): string {
   return `You are LITMUS SKEPTIC. Your job is to CHALLENGE findings. Try to kill this result.
 
-Hypothesis: ${ctx.hypothesis}
-p-value: ${ctx.pValue}
-Effect size: ${ctx.effectSize}
-Experiment code: ${ctx.experimentCode}
-Result: ${ctx.experimentResult}
+Hypothesis: ${hypothesis}
+p-value: ${pValue}
+Effect size (Cohen's d): ${effectSize}
+Experiment result: ${experimentResult}
 
-Run the 5-check gauntlet:
+Run checks 2-4 of the validation gauntlet (checks 1 and 5 are handled locally):
 
-1. MULTIPLE TESTING: Given how many hypotheses were tested, does this survive Benjamini-Hochberg FDR correction?
 2. CONFOUNDER SCAN: Could a confounding variable explain this? (e.g., learning rate schedule, batch size changes at that epoch)
 3. TEMPORAL STABILITY: Does this pattern hold across different training windows, or is it an artifact of one snapshot?
 4. HOLDOUT REPLICATION: If we split checkpoints into train/test, does the pattern replicate?
-5. EFFECT SIZE: Is Cohen's d > 0.3? Is this practically meaningful, not just statistically significant?
 
 For each check, output PASS or FAIL with 1-sentence reasoning.
 
-Output JSON:
+Output ONLY valid JSON (no markdown fences):
 {
   "checks": [
-    { "name": string, "result": "PASS" | "FAIL", "reason": string }
-  ],
-  "grade": "A" | "B" | "C",
-  "overall": string (1 sentence summary)
+    { "name": "Confounder Scan", "result": "PASS" or "FAIL", "reason": "..." },
+    { "name": "Temporal Stability", "result": "PASS" or "FAIL", "reason": "..." },
+    { "name": "Holdout Replication", "result": "PASS" or "FAIL", "reason": "..." }
+  ]
 }`;
 }
 
-export function narratorPrompt(ctx: NarrationContext): string {
+export function narratorPrompt(findingsSummary: string): string {
   return `You are LITMUS NARRATOR. You produce the final discovery report.
 
-Validated findings (sorted by surprise score):
-${ctx.validatedFindings
-  .sort((a, b) => b.surpriseScore - a.surpriseScore)
-  .map(
-    (f) =>
-      `[Grade ${f.grade}] (surprise: ${f.surpriseScore.toFixed(2)}) ${f.hypothesis}\nEvidence: ${f.evidence}`,
-  )
-  .join("\n\n")}
+Validated findings:
+${findingsSummary}
 
-Write a discovery report in plain English. For each finding:
-1. Title (bold, specific)
+Write a discovery report in markdown. For each finding:
+1. **Title** (bold, specific)
 2. What was discovered (2-3 sentences, no jargon)
 3. Why it matters (1 sentence on implications for model design or training strategy)
 4. Evidence summary (p-value, effect size, which checks passed)
 5. Confidence grade and surprise score
 
-End with a "What to investigate next" section: 2-3 follow-up questions this analysis opened up.
+End with a "What to investigate next" section: 2-3 follow-up questions.
 
-Format: Markdown. No code blocks. Embed Plotly chart references as [Figure N] placeholders.`;
+Output the full markdown report directly (not wrapped in JSON).`;
 }

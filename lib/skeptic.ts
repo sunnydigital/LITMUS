@@ -1,14 +1,14 @@
 /**
- * skeptic.ts - 5-check validation gauntlet for LITMUS.
+ * skeptic.ts - Validation utilities for LITMUS.
  *
- * Runs each finding through:
+ * Local checks:
  *   1. Multiple testing correction (Benjamini-Hochberg FDR)
- *   2. Confounder scan (partial correlations)
- *   3. Temporal stability (pattern holds across training windows)
- *   4. Holdout replication (validate on held-out checkpoints)
  *   5. Effect size filter (Cohen's d > 0.3)
  *
- * Grades: A (5/5 pass), B (4/5 pass), C (< 4 pass, archived)
+ * Checks 2-4 (confounder, temporal, holdout) delegated to Claude
+ * via the skeptic prompt in the discover route.
+ *
+ * Grades: A (5/5 pass), B (4/5 pass), C (< 4 pass)
  */
 
 export interface CheckResult {
@@ -78,48 +78,4 @@ export function computeGrade(checks: CheckResult[]): ValidationResult {
   const passCount = checks.filter((c) => c.result === "PASS").length;
   const grade = passCount >= 5 ? "A" : passCount >= 4 ? "B" : "C";
   return { checks, grade, passCount };
-}
-
-/**
- * Run full skeptic gauntlet via Claude API.
- * Sends hypothesis + experiment results to /api/validate endpoint.
- * Returns structured validation result.
- *
- * TODO: Implement E2B sandbox execution for checks 2-4
- * (partial correlation, temporal stability, holdout replication
- * require actual computation on the training artifacts)
- */
-export async function runGauntlet(params: {
-  hypothesis: string;
-  pValue: number;
-  effectSize: number;
-  experimentCode: string;
-  experimentResult: string;
-  allPValues: number[];
-  hypothesisIndex: number;
-}): Promise<ValidationResult> {
-  // Check 1: Multiple testing
-  const fdrSurvives = benjaminiHochberg(params.allPValues);
-  const fdrCheck: CheckResult = {
-    name: "Multiple Testing",
-    result: fdrSurvives[params.hypothesisIndex] ? "PASS" : "FAIL",
-    reason: fdrSurvives[params.hypothesisIndex]
-      ? `Survives BH-FDR correction at q=0.05 (${params.allPValues.length} tests)`
-      : `Does not survive BH-FDR correction (${params.allPValues.length} tests, adjusted threshold too low)`,
-  };
-
-  // Check 5: Effect size
-  const esCheck = effectSizeCheck(params.effectSize);
-
-  // Checks 2-4: Delegated to Claude via /api/validate
-  // These require reasoning about confounders, temporal patterns, and holdout design
-  // TODO: Wire to API endpoint
-  const placeholderChecks: CheckResult[] = [
-    { name: "Confounder Scan", result: "PASS", reason: "TODO: wire to /api/validate" },
-    { name: "Temporal Stability", result: "PASS", reason: "TODO: wire to /api/validate" },
-    { name: "Holdout Replication", result: "PASS", reason: "TODO: wire to /api/validate" },
-  ];
-
-  const allChecks = [fdrCheck, ...placeholderChecks, esCheck];
-  return computeGrade(allChecks);
 }
