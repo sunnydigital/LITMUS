@@ -1,0 +1,29 @@
+{
+  "trial": "Synthetic Phase III - Cardiovascular",
+  "description": "500-patient RCT with 12 measured endpoints. Treatment vs placebo.",
+  "n_treatment": 250,
+  "n_placebo": 250,
+  "primary_endpoints": [
+    "ldl_cholesterol",
+    "hba1c"
+  ],
+  "secondary_endpoints": [
+    "blood_pressure_systolic",
+    "blood_pressure_diastolic",
+    "hdl_cholesterol",
+    "triglycerides",
+    "fasting_glucose",
+    "crp_inflammation",
+    "liver_alt",
+    "kidney_egfr",
+    "bmi",
+    "quality_of_life_score"
+  ],
+  "hidden_phenomena": [
+    "2_real_effects_ldl_and_hba1c",
+    "3_spurious_significances_wont_survive_fdr",
+    "1_significant_but_trivial_effect_size_liver_alt",
+    "age_confounds_blood_pressure_and_glucose",
+    "multiple_testing_problem_12_endpoints"
+  ]
+}

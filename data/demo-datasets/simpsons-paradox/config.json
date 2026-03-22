@@ -1,0 +1,16 @@
+{
+  "experiment": "checkout_flow_ab_test",
+  "description": "A/B test of new checkout flow (Treatment B) vs control (Treatment A)",
+  "duration_days": 14,
+  "total_users": 3100,
+  "segments": [
+    "mobile",
+    "desktop",
+    "enterprise"
+  ],
+  "primary_metric": "converted",
+  "hidden_phenomena": [
+    "simpsons_paradox",
+    "confounded_segment_allocation"
+  ]
+}

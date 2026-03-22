@@ -1,0 +1,28 @@
+{
+  "company": "Synthetic SaaS Startup",
+  "description": "18 months of key SaaS metrics from seed to Series A",
+  "metrics_tracked": [
+    "month",
+    "mrr",
+    "signups",
+    "churn_rate",
+    "cac",
+    "ltv",
+    "ltv_cac_ratio",
+    "activation_rate",
+    "active_users",
+    "rev_per_user"
+  ],
+  "events": {
+    "month_6": "Launched paid marketing campaign",
+    "month_8": "Pricing change: $29/mo \u2192 $39/mo",
+    "month_11": "Closed first enterprise deal ($15k/mo)",
+    "month_10": "Shipped onboarding redesign"
+  },
+  "hidden_phenomena": [
+    "churn_spike_correlates_with_pricing_change",
+    "enterprise_outlier_inflates_mrr",
+    "signups_inversely_correlated_with_rev_per_user",
+    "genuine_pmf_signal_in_activation_rate"
+  ]
+}

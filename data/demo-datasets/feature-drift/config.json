@@ -1,0 +1,12 @@
+{
+  "model": "Production fraud detection classifier",
+  "description": "90 days of model monitoring metrics and feature statistics",
+  "features_monitored": 8,
+  "refresh_cadence": "daily",
+  "hidden_phenomena": [
+    "gradual_drift_features_2_and_5_after_day_45",
+    "pipeline_bug_days_60_63_not_model_degradation",
+    "data_freshness_correlates_with_accuracy",
+    "weekend_volume_pattern_is_not_anomalous"
+  ]
+}
