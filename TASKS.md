@@ -1,6 +1,6 @@
 # LITMUS - Open Tasks
 
-**EmpireHacks 2026 | Operator Track | Team: Amadeus, Sunny, Kanishkha, Nirbhaya**
+**EmpireHacks 2026 | Team: Amadeus, Sunny, Kanishkha, Nirbhaya**
 
 ## Concept Pivot (READ FIRST)
 
@@ -16,7 +16,7 @@ The original LITMUS pitch targeted generic tabular data (CSVs, hospital readmiss
 - 5-stage pipeline: Profiler > Hypothesizer > Experimenter > Skeptic > Narrator
 - Skeptic gauntlet (5 checks, A/B/C grading)
 - Surprise score ranking (KL x significance x effect_size)
-- Google Sheets push (Operator track requirement)
+- Google Sheets push (external system integration)
 - SSE streaming for real-time reasoning display
 
 ---
@@ -25,50 +25,50 @@ The original LITMUS pitch targeted generic tabular data (CSVs, hospital readmiss
 
 ### P0: Must Ship (blocks demo)
 
-#### 1. Wire Profiler agent [Amadeus]
+#### 1. Wire Profiler agent
 - Connect `/api/profile` to Anthropic SDK
 - SSE streaming response
 - Parse uploaded training artifacts (loss CSVs, config JSONs)
 - Return structured profile (epochs, architecture, trajectory, anomalies)
 - **Acceptance:** Upload a loss.csv, get back JSON profile with epoch count and anomaly detection
 
-#### 2. Wire Hypothesizer agent [Amadeus]
+#### 2. Wire Hypothesizer agent
 - Connect `/api/hypothesize` to Anthropic SDK
 - Takes profile output + prior experiment results
 - Returns ranked hypotheses with surprise scores
 - Implements feedback loop (experiment results feed back in)
 - **Acceptance:** Given a profile, returns 3-7 testable hypotheses ranked by info gain
 
-#### 3. Wire Experimenter agent [Kanishkha or TBD]
+#### 3. Wire Experimenter agent
 - Connect `/api/experiment` to Anthropic SDK + E2B sandbox
 - Claude generates Python test script
 - Script executes in E2B (scipy, torch, statsmodels, plotly)
 - Parse p-value, effect size, plot from output
 - **Acceptance:** Given a hypothesis, generates and runs a statistical test, returns structured result with Plotly chart
 
-#### 4. Wire Skeptic gauntlet [Amadeus]
+#### 4. Wire Skeptic gauntlet
 - Connect `/api/validate` to Anthropic SDK for checks 2-4
 - Checks 1 (FDR) and 5 (effect size) already implemented in `lib/skeptic.ts`
 - Claude evaluates confounders, temporal stability, holdout design
 - Assign A/B/C grade
 - **Acceptance:** Given experiment results, returns 5 check results and a grade
 
-#### 5. Wire Narrator agent [Sunny]
+#### 5. Wire Narrator agent
 - Connect `/api/narrate` to Anthropic SDK
 - SSE streaming markdown report
 - Include Plotly figure references
 - Push summary to Google Sheets
 - **Acceptance:** Validated findings in, markdown report out, pushed to Sheets
 
-#### 6. Frontend: Discovery stream UI [Sunny]
+#### 6. Frontend: Discovery stream UI
 - Real-time display of pipeline stages (profiling... hypothesizing... experimenting...)
 - Show hypothesis tree (active branches, dead branches grayed out)
 - Embed Plotly charts from experiment results
 - Show skeptic gauntlet results (pass/fail badges)
 - **Acceptance:** User sees live pipeline progress and can follow reasoning
 
-#### 7. Demo data: NanoGPT training artifacts [Kanishkha or TBD]
-- Generate or source training artifacts from a small NanoGPT run:
+#### 7. Demo data: Training artifacts
+- Generate or source training artifacts from a small NanoGPT-scale run:
   - loss.csv (train_loss, val_loss, epoch)
   - Gradient norm log
   - Attention entropy per head per epoch (can be synthetic/simulated)
@@ -78,18 +78,17 @@ The original LITMUS pitch targeted generic tabular data (CSVs, hospital readmiss
 
 ### P1: Should Ship (makes demo compelling)
 
-#### 8. Plotly chart rendering in frontend [Sunny]
+#### 8. Plotly chart rendering in frontend
 - Parse Plotly JSON from experiment results
 - Render interactive charts in ExperimentResult component
 - **Acceptance:** Charts visible and interactive in browser
 
-#### 9. Google Sheets integration [TBD]
+#### 9. Google Sheets integration
 - Wire googleapis SDK
 - Push discovery summaries (title, grade, surprise score, p-value) to a Google Sheet
-- Satisfies Operator track requirement for external system integration
 - **Acceptance:** After pipeline runs, a Google Sheet populates with findings
 
-#### 10. Feedback loop visualization [Sunny]
+#### 10. Feedback loop visualization
 - Show how experiment results feed back into hypothesizer
 - Animate hypothesis tree growth/pruning
 - **Acceptance:** Visible feedback loop in UI
@@ -139,7 +138,7 @@ The original LITMUS pitch targeted generic tabular data (CSVs, hospital readmiss
 
 ### ENV vars needed:
 ```
-ANTHROPIC_API_KEY    - Claude API (Amadeus has this)
+ANTHROPIC_API_KEY    - Claude API
 E2B_API_KEY          - Code interpreter sandbox
 GOOGLE_SHEETS_API_KEY - For output push
 GOOGLE_SHEETS_SPREADSHEET_ID - Target sheet
@@ -149,4 +148,4 @@ GOOGLE_SHEETS_SPREADSHEET_ID - Target sheet
 
 ## Communication
 
-Amadeus will be at Grayscale (Fordham) working on Lunatic Eyes. Available async via Discord/text. Push to main freely. Tag in Discord if blocked.
+Push to main freely. Tag in Discord if blocked.
