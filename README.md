@@ -1,10 +1,10 @@
 # LITMUS
 
-**Autonomous research agent that tries to debunk itself.**
+**Autonomous data research agent that challenges its own findings.**
 
-Upload any structured dataset. LITMUS profiles it, generates hypotheses ranked by surprise, runs experiments, then attempts to kill its own findings through a 5-check validation gauntlet. Only what survives gets reported.
+Upload any dataset. LITMUS autonomously decides what to investigate, runs statistical tests, then validates everything through Benjamini-Hochberg FDR correction and effect size filtering. Only what survives gets reported.
 
-> "Three findings generated. One killed by confounder scan. Two survived with Grade A. Here's the proof."
+> "13 tools called. 6 findings generated. 1 killed by FDR correction. 5 survived Grade A. Here's the proof."
 
 ## Track: The Operator (EmpireHacks 2026)
 
@@ -19,129 +19,87 @@ cp .env.example .env
 npm run dev
 ```
 
-Open http://localhost:3000. Click **Run Demo** to use built-in demo data.
+Open http://localhost:3000. Pick a demo dataset or upload your own.
 
-One API key, one command, full pipeline.
+One API key, one command, full autonomous agent.
 
-## What It Does
+## How It Works
 
-Upload a dataset. LITMUS finds what you missed, then tries to prove itself wrong.
-
-| Step | What happens |
-|---|---|
-| Profile | Reads your data. Identifies structure, distributions, anomalies. |
-| Hypothesize | Generates ranked hypotheses by expected information gain. |
-| Experiment | Runs statistical tests. Real numbers, not narration. |
-| Validate | 5-check skeptic gauntlet tries to kill each finding. |
-| Report | Survivors get graded (A/B/C), ranked by surprise, narrated. |
-
-The system that validates everything validates nothing. LITMUS shows you the corpses alongside the survivors.
-
-## Architecture
-
-One API route (`/api/discover`) runs 5 pipeline stages sequentially, streaming progress via SSE:
+LITMUS runs a Claude agentic loop with 11 statistical tools. Claude **decides** what to investigate — not a fixed pipeline.
 
 ```
-Upload files (or click "Run Demo")
+Upload data (CSV, JSON, TSV, paste)
      |
      v
-[1. PROFILER]       Reads data, identifies structure and anomalies
+  ┌─────────────────────────────────────┐
+  │         AGENTIC LOOP                │
+  │                                     │
+  │  OBSERVE  → describe_dataset        │
+  │  DECIDE   → form hypotheses         │
+  │  ACT      → run_ttest               │
+  │            → compute_correlation    │
+  │            → detect_simpsons_paradox│
+  │            → detect_changepoints    │
+  │            → detect_anomalies       │
+  │            → chi_square_test        │
+  │            → compute_entropy        │
+  │  VALIDATE → validate_findings       │
+  │  VISUALIZE→ generate_chart          │
+  │  RESEARCH → web_search              │
+  │                                     │
+  │  Claude decides tools + order.      │
+  │  Max 25 turns. Real-time SSE.       │
+  └─────────────────────────────────────┘
      |
      v
-[2. HYPOTHESIZER]   Generates ranked hypotheses by information gain
-     |
-     v
-[3. EXPERIMENTER]   Runs numerical analysis, Claude interprets results
-     |                ** needs lib/analysis.ts built - see TASKS.md #2 **
-     |
-     v
-[4. SKEPTIC]        5-check gauntlet: BH-FDR, confounders, temporal, holdout, effect size
-     |
-     v
-[5. NARRATOR]       Final discovery report with grades and surprise scores
+  Discovery Report (validated findings only)
 ```
 
-### What runs locally vs what's Claude
+The agent streams its reasoning, tool calls, and results to the frontend in real time via SSE.
 
-| Component | Local | Claude |
+## What Runs Locally vs Claude
+
+| Component | Where | What |
 |---|---|---|
-| BH-FDR correction | `lib/skeptic.ts` | - |
-| Effect size threshold | `lib/skeptic.ts` | - |
-| KL divergence scoring | `lib/surprise.ts` | - |
-| Numerical analysis | `lib/analysis.ts` **(needs building)** | - |
-| Data profiling | - | Reads raw data |
-| Hypothesis generation | - | Generates and ranks |
-| Result interpretation | - | Narrates real numbers |
-| Confounder/temporal/holdout | - | Reasons about validity |
+| Statistical tests | Local (`lib/analysis.ts`) | t-test, correlation, chi-square, entropy, changepoints, anomalies, Simpson's paradox |
+| BH-FDR correction | Local (`lib/skeptic.ts`) | Multiple testing correction |
+| Effect size filter | Local (`lib/skeptic.ts`) | Cohen's d > 0.3 threshold |
+| KL divergence | Local (`lib/surprise.ts`) | Surprise scoring |
+| Chart generation | Local (`lib/analysis.ts`) | Auto-detect chart type from data |
+| Investigation strategy | Claude (tool_use) | Decides what to test, in what order |
+| Hypothesis generation | Claude (tool_use) | Forms and explains hypotheses |
+| Result interpretation | Claude (tool_use) | Explains what findings mean |
+| Report writing | Claude (tool_use) | Structured markdown report |
 
-The critical task is building `lib/analysis.ts` so the experimenter runs real computations and passes those numbers to Claude for interpretation. See TASKS.md #2.
+All statistics are **real math** — Claude interprets results, it doesn't fabricate numbers.
 
-## The Skeptic Gauntlet
+## Demo Datasets
 
-Every finding passes 5 checks before being reported:
+5 curated datasets with real statistical traps:
 
-1. **Multiple Testing** - Benjamini-Hochberg FDR correction (local)
-2. **Confounder Scan** - Could a third variable explain this? (Claude)
-3. **Temporal Stability** - Does it hold across different data windows? (Claude)
-4. **Holdout Replication** - Does it replicate on held-out data? (Claude)
-5. **Effect Size Filter** - Cohen's d > 0.3, practically meaningful? (local)
-
-Grades: **A** = 5/5 pass | **B** = 4/5 pass | **C** = archived (< 4 pass)
-
-## Surprise Score
-
-Findings ranked by unexpectedness, not just significance:
-
-```
-discovery_score = surprise x significance x effect_size
-
-surprise     = KL divergence from expected distribution (lib/surprise.ts)
-significance = -log10(adjusted_p_value)
-effect_size  = |Cohen's d| or |r|
-```
-
-Obvious confirmations get deprioritized even at p < 0.001.
-
-## Demo Data
-
-`data/demo/` contains synthetic ML training data with patterns baked in for demonstration. Click "Run Demo" to see the full pipeline in action. Upload your own CSVs to discover patterns in any structured dataset.
+| Dataset | What It Tests |
+|---|---|
+| **Simpson's Paradox** | A/B test where treatment wins overall but loses in every segment |
+| **Startup Metrics** | 18-month SaaS data with churn spikes, enterprise outliers, hidden PMF |
+| **Clinical Trial** | 12-endpoint RCT with 2 real effects, 3 spurious, multiple-testing trap |
+| **Feature Drift** | 90 days ML monitoring with gradual drift and pipeline bug |
+| **Grokking** | Transformer training with phase transitions and gradient spikes |
 
 ## Stack
 
 | Layer | Tool |
 |---|---|
-| Reasoning | Claude Sonnet 4.5 (Anthropic) |
-| Validation | BH-FDR correction + effect size (local) |
-| Scoring | KL divergence surprise ranking (local) |
-| Frontend | Next.js 16 + Tailwind 4 |
-| Deploy | Vercel |
-
-## File Structure
-
-```
-app/
-  page.tsx                     # Single page: upload or stream results
-  layout.tsx                   # Root layout
-  globals.css                  # Tailwind + CSS vars
-  api/
-    discover/route.ts          # Single orchestrator: all 5 stages via SSE
-components/
-  DataUpload.tsx               # File upload + "Run Demo" button
-  DiscoveryStream.tsx          # Renders pipeline timeline + results + report
-lib/
-  prompts.ts                   # 5 agent prompt templates
-  skeptic.ts                   # BH-FDR correction + effect size check (REAL MATH)
-  surprise.ts                  # Discovery score ranking (REAL MATH)
-  analysis.ts                  # ** NEEDS BUILDING ** Real numerical analysis
-data/
-  demo/                        # Demo dataset for showcase
-```
+| Agent | Claude Sonnet 4.6 via tool_use API |
+| Statistics | 1,174 lines pure TypeScript (no external math libs) |
+| Validation | BH-FDR correction + Cohen's d (local) |
+| Frontend | Next.js 16 + Tailwind v4 + Recharts |
+| Streaming | Server-Sent Events (SSE) |
 
 ## Team
 
 | Person | Focus |
 |---|---|
-| Amadeus | Pipeline architecture, prompts, skeptic gauntlet |
+| Amadeus | Architecture, agentic loop, skeptic gauntlet |
 | Sunny | Frontend, visualization, upload flow |
 | Kanishkha | Domain research, experiment design |
 | Nirbhaya | Statistical validation, data handling |

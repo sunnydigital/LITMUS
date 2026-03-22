@@ -109,12 +109,12 @@ const COLOR_MAP = {
 
 interface DataUploadProps {
   onUpload: (files: File[]) => void;
-  onDemo: () => void;
+  onDemo?: () => void;
   onDemoDataset: (datasetId: string) => void;
   disabled?: boolean;
 }
 
-export default function DataUpload({ onUpload, onDemo, onDemoDataset, disabled }: DataUploadProps) {
+export default function DataUpload({ onUpload, onDemoDataset, disabled }: DataUploadProps) {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-12">
       {/* Upload Card */}
@@ -147,13 +147,13 @@ export default function DataUpload({ onUpload, onDemo, onDemoDataset, disabled }
             htmlFor="artifact-upload"
             className={`input-zone ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ boxShadow: '0 8px 30px rgba(99, 102, 241, 0.3)' }}>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg">
               <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
             
-            <span className="text-lg font-medium text-zinc-200 mb-2 block">
+            <span className="text-lg font-medium text-zinc-200">
               {disabled ? "Processing..." : "Drop files here or click to browse"}
             </span>
             <span className="text-sm text-zinc-500">
@@ -163,7 +163,7 @@ export default function DataUpload({ onUpload, onDemo, onDemoDataset, disabled }
         </div>
 
         <p className="text-xs text-zinc-600 text-center mt-6">
-          LITMUS will profile the data, generate hypotheses, run statistical tests, and validate findings through a 5-check skeptic gauntlet.
+          LITMUS autonomously decides what to investigate, runs statistical tests, and validates findings through BH-FDR correction and effect size filtering.
         </p>
       </div>
 

@@ -3,10 +3,10 @@
 import { useMemo, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import type { SSEEvent } from "@/app/page";
-import KnowledgeGraph from "./KnowledgeGraph";
 import type { ChartData } from "./DiscoveryChart";
 
 const DiscoveryChart = dynamic(() => import("./DiscoveryChart"), { ssr: false });
+const KnowledgeGraph = dynamic(() => import("./KnowledgeGraph"), { ssr: false });
 
 interface DiscoveryStreamProps {
   events: SSEEvent[];
