@@ -13,7 +13,7 @@ import DataUpload from "@/components/DataUpload";
 import DiscoveryStream from "@/components/DiscoveryStream";
 
 interface SSEEvent {
-  type: "stage" | "result" | "complete" | "error" | "chart";
+  type: "stage" | "result" | "complete" | "error" | "chart" | "subagent";
   data: Record<string, unknown>;
 }
 
@@ -136,6 +136,69 @@ export default function Home() {
     [runPipeline],
   );
 
+  const handlePastedData = useCallback(
+    (text: string) => {
+      // Send pasted text as JSON body to the API
+      setRunning(true);
+      setStage("profiling");
+      setEvents([]);
+      setReport(null);
+
+      (async () => {
+        try {
+          const res = await fetch("/api/discover", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pastedText: text }),
+          });
+
+          if (!res.ok || !res.body) {
+            setEvents((prev) => [...prev, { type: "error", data: { message: `HTTP ${res.status}` } }]);
+            setRunning(false);
+            return;
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop() || "";
+            for (const part of parts) {
+              if (!part.trim()) continue;
+              const lines = part.split("\n");
+              let eventType = "";
+              let eventData = "";
+              for (const line of lines) {
+                if (line.startsWith("event: ")) eventType = line.slice(7);
+                else if (line.startsWith("data: ")) eventData = line.slice(6);
+              }
+              if (!eventType || !eventData) continue;
+              try {
+                const parsed = JSON.parse(eventData);
+                setEvents((prev) => [...prev, { type: eventType as SSEEvent["type"], data: parsed }]);
+                if (eventType === "stage" && parsed.stage) setStage(parsed.stage);
+                if (eventType === "complete") { setReport(parsed.report || null); setStage("done"); }
+                if (eventType === "error") setStage("error");
+              } catch { /* skip */ }
+            }
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Connection failed";
+          setEvents((prev) => [...prev, { type: "error", data: { message: msg } }]);
+          setStage("error");
+        } finally {
+          setRunning(false);
+        }
+      })();
+    },
+    [],
+  );
+
   const handleReset = useCallback(() => {
     setStage("idle");
     setEvents([]);
@@ -169,6 +232,7 @@ export default function Home() {
           onUpload={handleUpload}
           onDemo={handleDemo}
           onDemoDataset={handleDemoDataset}
+          onPastedData={handlePastedData}
           disabled={running}
         />
       ) : (
