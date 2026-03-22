@@ -5,11 +5,14 @@
  *
  * Single component that renders the full SSE event stream.
  * Shows pipeline progress, hypotheses, experiment results,
- * validation badges, and the final markdown report.
+ * validation badges, inline charts, and the final markdown report.
  */
 
+import DiscoveryChart from "@/components/DiscoveryChart";
+import type { ChartData } from "@/components/DiscoveryChart";
+
 interface SSEEvent {
-  type: "stage" | "result" | "complete" | "error";
+  type: "stage" | "result" | "complete" | "error" | "chart";
   data: Record<string, unknown>;
 }
 
@@ -62,6 +65,10 @@ export default function DiscoveryStream({
   const stageMessages = events
     .filter((e) => e.type === "stage")
     .map((e) => e.data as { stage: string; message: string });
+
+  const profileCharts = events
+    .filter((e) => e.type === "chart" && e.data.stage === "profile")
+    .flatMap((e) => (Array.isArray(e.data.charts) ? (e.data.charts as ChartData[]) : []));
 
   const completedStages = new Set<string>();
   const stageOrder = STAGES.map((s) => s.key);
@@ -119,6 +126,16 @@ export default function DiscoveryStream({
         <p className="text-zinc-400 text-sm italic">
           {stageMessages[stageMessages.length - 1].message}
         </p>
+      )}
+
+      {/* Profile Charts */}
+      {profileCharts.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold mb-3 text-zinc-200">Data Charts</h3>
+          {profileCharts.map((chart, i) => (
+            <DiscoveryChart key={i} chart={chart} />
+          ))}
+        </div>
       )}
 
       {/* Hypotheses */}

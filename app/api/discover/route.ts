@@ -12,7 +12,7 @@ import {
 import { benjaminiHochberg, effectSizeCheck, computeGrade } from "@/lib/skeptic";
 import type { CheckResult } from "@/lib/skeptic";
 import { discoveryScore } from "@/lib/surprise";
-import { parseCSV, runAnalysisSuite } from "@/lib/analysis";
+import { parseCSV, runAnalysisSuite, computeSurpriseScores, generateChartData } from "@/lib/analysis";
 
 const MODEL = "claude-sonnet-4-5-20250929";
 
@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
   // Parse input
   let dataDescription = "";
   let computedStats = "";
+  let computedSurpriseMap: Record<string, number> = {};
+  let profileCharts: import("@/lib/analysis").ChartData[] = [];
 
   const contentType = req.headers.get("content-type") || "";
 
@@ -64,9 +66,11 @@ export async function POST(req: NextRequest) {
     const isDemo = formData.get("demo") === "true";
 
     if (demoDataset && typeof demoDataset === "string") {
-      const { desc, stats } = await loadDemoDataset(demoDataset);
+      const { desc, stats, surpriseMap, charts } = await loadDemoDataset(demoDataset);
       dataDescription = desc;
       computedStats = stats;
+      computedSurpriseMap = surpriseMap;
+      profileCharts = charts;
     } else if (isDemo) {
       dataDescription = await loadLegacyDemoData();
     } else {
@@ -90,6 +94,8 @@ export async function POST(req: NextRequest) {
           const parsed = parseCSV(csvText);
           if (parsed.rows.length > 0) {
             allStats.push(runAnalysisSuite(parsed));
+            Object.assign(computedSurpriseMap, computeSurpriseScores(parsed));
+            profileCharts.push(...generateChartData(parsed));
           }
         }
         computedStats = allStats.join("\n\n");
@@ -99,9 +105,11 @@ export async function POST(req: NextRequest) {
     // JSON body
     const body = await req.json();
     if (body.demoDataset) {
-      const { desc, stats } = await loadDemoDataset(body.demoDataset);
+      const { desc, stats, surpriseMap, charts } = await loadDemoDataset(body.demoDataset);
       dataDescription = desc;
       computedStats = stats;
+      computedSurpriseMap = surpriseMap;
+      profileCharts = charts;
     } else if (body.demo) {
       dataDescription = await loadLegacyDemoData();
     } else {
@@ -110,6 +118,8 @@ export async function POST(req: NextRequest) {
         const parsed = parseCSV(dataDescription);
         if (parsed.rows.length > 0) {
           computedStats = runAnalysisSuite(parsed);
+          computedSurpriseMap = computeSurpriseScores(parsed);
+          profileCharts = generateChartData(parsed);
         }
       }
     }
@@ -143,6 +153,11 @@ export async function POST(req: NextRequest) {
 
         send("result", { stage: "profile", data: profile });
 
+        // Send profile-level charts
+        if (profileCharts.length > 0) {
+          send("chart", { stage: "profile", charts: profileCharts });
+        }
+
         const profileSummary =
           typeof profile.summary === "string"
             ? profile.summary
@@ -169,6 +184,17 @@ export async function POST(req: NextRequest) {
               test_strategy: "unknown",
             },
           ];
+        }
+
+        // Override Claude's subjective surprise_prior with computed KL-divergence values
+        if (Object.keys(computedSurpriseMap).length > 0) {
+          hypotheses = hypotheses.map((hyp) => {
+            const matched = matchSurpriseScore(hyp.text, computedSurpriseMap);
+            if (matched !== null) {
+              return { ...hyp, surprise_prior: matched };
+            }
+            return hyp;
+          });
         }
 
         send("result", { stage: "hypotheses", data: hypotheses });
@@ -343,7 +369,7 @@ export async function POST(req: NextRequest) {
  * Load a named demo dataset from data/demo-datasets/{name}/.
  * Returns both a text description and pre-computed stats.
  */
-async function loadDemoDataset(name: string): Promise<{ desc: string; stats: string }> {
+async function loadDemoDataset(name: string): Promise<{ desc: string; stats: string; surpriseMap: Record<string, number>; charts: import("@/lib/analysis").ChartData[] }> {
   const config = DEMO_DATASETS[name];
   if (!config) {
     throw new Error(`Unknown demo dataset: ${name}`);
@@ -369,15 +395,53 @@ async function loadDemoDataset(name: string): Promise<{ desc: string; stats: str
 
   // Run statistical analysis on CSV files
   const statsParts: string[] = [];
+  const surpriseMap: Record<string, number> = {};
+  const charts: import("@/lib/analysis").ChartData[] = [];
+
   for (const csvText of csvTexts) {
     const parsed = parseCSV(csvText);
     if (parsed.rows.length > 0) {
       statsParts.push(runAnalysisSuite(parsed));
+      Object.assign(surpriseMap, computeSurpriseScores(parsed));
+      charts.push(...generateChartData(parsed));
     }
   }
   const stats = statsParts.join("\n\n");
 
-  return { desc, stats };
+  return { desc, stats, surpriseMap, charts };
+}
+
+/**
+ * Fuzzy-match a hypothesis text to a computed surprise score.
+ * Looks for column names or test descriptions appearing in both.
+ */
+function matchSurpriseScore(
+  hypothesisText: string,
+  surpriseMap: Record<string, number>,
+): number | null {
+  const hText = hypothesisText.toLowerCase();
+
+  let bestScore: number | null = null;
+  let bestMatchLen = 0;
+
+  for (const [key, score] of Object.entries(surpriseMap)) {
+    const keyLower = key.toLowerCase();
+    // Extract meaningful tokens from the key
+    const tokens = keyLower
+      .replace(/['"×()]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 2);
+
+    // Count how many tokens appear in the hypothesis text
+    const matchCount = tokens.filter((t) => hText.includes(t)).length;
+
+    if (matchCount > 0 && matchCount >= bestMatchLen) {
+      bestMatchLen = matchCount;
+      bestScore = score;
+    }
+  }
+
+  return bestScore;
 }
 
 /**

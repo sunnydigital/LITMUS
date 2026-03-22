@@ -5,6 +5,8 @@
  * No external dependencies — runs in Next.js Edge/Node runtime.
  */
 
+import { klDivergence, distributionFromValues } from "@/lib/surprise";
+
 // ---- Types ----
 
 export interface ParsedCSV {
@@ -49,6 +51,13 @@ export interface SimpsonsParadoxResult {
   strataDiffs: Record<string, number>;
   paradoxDetected: boolean;
   description: string;
+}
+
+export interface ChartData {
+  type: "bar" | "grouped-bar" | "line" | "forest";
+  title: string;
+  data: Record<string, unknown>[];
+  config: Record<string, unknown>;
 }
 
 // ---- CSV Parser ----
@@ -527,6 +536,372 @@ export function detectSimpsonsParadox(
 }
 
 /**
+ * Compute KL-divergence-based surprise scores for each detected finding.
+ * Returns a map of description → surprise value in [0, 1].
+ */
+export function computeSurpriseScores(parsed: ParsedCSV): Record<string, number> {
+  const rawScores: Record<string, number> = {};
+
+  const numCols = Object.keys(parsed.numericColumns);
+  const catCols = Object.keys(parsed.categoricalColumns);
+
+  // --- Group comparison surprises (t-tests) ---
+  const treatmentCols = catCols.filter((col) => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter((v) => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 5;
+  });
+
+  for (const catCol of treatmentCols) {
+    const groups = [...new Set(parsed.categoricalColumns[catCol])].filter(
+      (v) => v && v !== "NaN",
+    );
+    if (groups.length < 2) continue;
+
+    for (const numCol of numCols) {
+      for (let gi = 0; gi < groups.length; gi++) {
+        for (let gj = gi + 1; gj < groups.length; gj++) {
+          const gA = groups[gi];
+          const gB = groups[gj];
+          const valA = parsed.rows
+            .filter((r) => String(r[catCol]) === gA)
+            .map((r) => Number(r[numCol]))
+            .filter((v) => !isNaN(v));
+          const valB = parsed.rows
+            .filter((r) => String(r[catCol]) === gB)
+            .map((r) => Number(r[numCol]))
+            .filter((v) => !isNaN(v));
+
+          if (valA.length < 5 || valB.length < 5) continue;
+
+          // Compute histograms over combined range
+          const allVals = [...valA, ...valB];
+          const minV = Math.min(...allVals);
+          const maxV = Math.max(...allVals);
+          const range = maxV - minV;
+          if (range < 1e-10) continue;
+
+          const BINS = 10;
+          const distA = distributionFromValues(valA, BINS);
+          const distB = distributionFromValues(valB, BINS);
+
+          const kl = (klDivergence(distA, distB) + klDivergence(distB, distA)) / 2; // symmetric KL
+          const key = `${catCol} ${gA} vs ${gB} on ${numCol}`;
+          rawScores[key] = kl;
+        }
+      }
+    }
+  }
+
+  // --- Correlation surprises ---
+  if (numCols.length >= 2) {
+    const allCorrs: number[] = [];
+    for (let i = 0; i < numCols.length && i < 10; i++) {
+      for (let j = i + 1; j < numCols.length && j < 10; j++) {
+        const c = pearsonCorrelation(
+          parsed.numericColumns[numCols[i]],
+          parsed.numericColumns[numCols[j]],
+        );
+        if (!isNaN(c.r)) allCorrs.push(Math.abs(c.r));
+      }
+    }
+    const medianCorr =
+      allCorrs.length > 0
+        ? allCorrs.sort((a, b) => a - b)[Math.floor(allCorrs.length / 2)]
+        : 0.3;
+
+    for (let i = 0; i < numCols.length && i < 10; i++) {
+      for (let j = i + 1; j < numCols.length && j < 10; j++) {
+        const c = pearsonCorrelation(
+          parsed.numericColumns[numCols[i]],
+          parsed.numericColumns[numCols[j]],
+        );
+        if (isNaN(c.r) || c.pValue >= 0.05) continue;
+        // Surprise = how much higher than median correlation
+        const excess = Math.max(0, Math.abs(c.r) - medianCorr);
+        const kl = excess * 3; // scale so excess of 0.33 → KL~1
+        const key = `correlation ${numCols[i]} vs ${numCols[j]}`;
+        rawScores[key] = kl;
+      }
+    }
+  }
+
+  // --- Simpson's Paradox surprises ---
+  const binaryNumCols = numCols.filter((col) => {
+    const vals = parsed.numericColumns[col].filter((v) => !isNaN(v));
+    const uniq = [...new Set(vals)];
+    return uniq.length === 2 && uniq.every((v) => v === 0 || v === 1);
+  });
+
+  const treatmentCatCols = catCols.filter((col) => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter((v) => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 3;
+  });
+  const stratifierCatCols = catCols.filter((col) => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter((v) => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 10;
+  });
+
+  for (const outCol of binaryNumCols) {
+    for (const treatCol of treatmentCatCols) {
+      for (const stratCol of stratifierCatCols) {
+        if (stratCol === treatCol) continue;
+
+        const result = detectSimpsonsParadox(parsed, outCol, treatCol, stratCol);
+        if (result.paradoxDetected) {
+          // Compute KL between overall distribution and stratum-weighted distribution
+          const treatments = [...new Set(parsed.rows.map((r) => String(r[treatCol])))].filter(
+            (v) => v && v !== "NaN",
+          );
+          const strata = [...new Set(parsed.rows.map((r) => String(r[stratCol])))].filter(
+            (v) => v && v !== "NaN",
+          );
+
+          const overallRates = treatments.map((t) => {
+            const subset = parsed.rows.filter((r) => String(r[treatCol]) === t);
+            const vals = subset.map((r) => Number(r[outCol])).filter((v) => !isNaN(v));
+            return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          });
+
+          // Weighted average of stratum rates
+          const weightedRates = treatments.map((t) => {
+            let totalWeightedRate = 0;
+            let totalWeight = 0;
+            for (const stratum of strata) {
+              const subset = parsed.rows.filter(
+                (r) => String(r[treatCol]) === t && String(r[stratCol]) === stratum,
+              );
+              if (subset.length > 0) {
+                const vals = subset.map((r) => Number(r[outCol])).filter((v) => !isNaN(v));
+                const rate = vals.reduce((a, b) => a + b, 0) / vals.length;
+                totalWeightedRate += rate * subset.length;
+                totalWeight += subset.length;
+              }
+            }
+            return totalWeight > 0 ? totalWeightedRate / totalWeight : 0;
+          });
+
+          const totalOvR = overallRates.reduce((a, b) => a + b, 0) || 1;
+          const totalWR = weightedRates.reduce((a, b) => a + b, 0) || 1;
+          const normOvR = overallRates.map((r) => r / totalOvR);
+          const normWR = weightedRates.map((r) => r / totalWR);
+
+          const kl = klDivergence(normOvR, normWR);
+          // Paradox gets a minimum of 0.8 surprise
+          const key = `Simpson's Paradox (${outCol} × ${treatCol} × ${stratCol})`;
+          rawScores[key] = Math.max(kl + 1.5, 2.0); // ensure high surprise
+        }
+      }
+    }
+  }
+
+  // --- Changepoint surprises ---
+  for (const col of numCols) {
+    const vals = parsed.numericColumns[col];
+    const cp = detectChangepoints(vals, 2.0);
+    if (cp.indices.length > 0) {
+      // Compute KL between pre and post first changepoint
+      const cpIdx = cp.indices[0];
+      const preSeg = vals.slice(0, cpIdx).filter((v) => !isNaN(v));
+      const postSeg = vals.slice(cpIdx).filter((v) => !isNaN(v));
+      if (preSeg.length >= 5 && postSeg.length >= 5) {
+        const distPre = distributionFromValues(preSeg, 10);
+        const distPost = distributionFromValues(postSeg, 10);
+        const kl = (klDivergence(distPre, distPost) + klDivergence(distPost, distPre)) / 2;
+        const key = `changepoint in ${col}`;
+        rawScores[key] = kl;
+      }
+    }
+  }
+
+  // --- Normalize all scores to [0, 1] ---
+  const rawValues = Object.values(rawScores);
+  if (rawValues.length === 0) return {};
+
+  const maxKL = Math.max(...rawValues, 1e-10);
+  const result: Record<string, number> = {};
+  for (const [key, kl] of Object.entries(rawScores)) {
+    // sigmoid-like normalization: min(1, kl / maxKL)
+    result[key] = Math.min(1, kl / maxKL);
+  }
+
+  return result;
+}
+
+/**
+ * Generate chart data for relevant visualizations based on parsed CSV.
+ * Returns an array of ChartData objects for rendering.
+ */
+export function generateChartData(parsed: ParsedCSV): ChartData[] {
+  const charts: ChartData[] = [];
+  const numCols = Object.keys(parsed.numericColumns);
+  const catCols = Object.keys(parsed.categoricalColumns);
+
+  // --- Detect dataset type ---
+
+  // Check for treatment/group + outcome (Simpson's Paradox style)
+  const treatmentCols = catCols.filter((col) => {
+    const uniq = [...new Set(parsed.categoricalColumns[col].filter((v) => v && v !== "NaN"))];
+    return uniq.length >= 2 && uniq.length <= 5;
+  });
+
+  const binaryNumCols = numCols.filter((col) => {
+    const vals = parsed.numericColumns[col].filter((v) => !isNaN(v));
+    const uniq = [...new Set(vals)];
+    return uniq.length === 2 && uniq.every((v) => v === 0 || v === 1);
+  });
+
+  // --- Grouped bar chart for treatment × stratifier × outcome ---
+  if (binaryNumCols.length > 0 && treatmentCols.length >= 2) {
+    const outCol = binaryNumCols[0];
+    const treatCol = treatmentCols[0];
+    const stratCol = treatmentCols.find((c) => c !== treatCol);
+
+    if (stratCol) {
+      const treatments = [...new Set(parsed.categoricalColumns[treatCol].filter((v) => v && v !== "NaN"))];
+      const strata = [...new Set(parsed.categoricalColumns[stratCol].filter((v) => v && v !== "NaN"))];
+
+      // Overall rates
+      const chartDataPoints: Record<string, unknown>[] = [];
+
+      // Overall segment
+      const overallPoint: Record<string, unknown> = { segment: "Overall" };
+      for (const t of treatments) {
+        const subset = parsed.rows
+          .filter((r) => String(r[treatCol]) === t)
+          .map((r) => Number(r[outCol]))
+          .filter((v) => !isNaN(v));
+        overallPoint[t] = subset.length > 0 ? Math.round((subset.reduce((a, b) => a + b, 0) / subset.length) * 1000) / 1000 : 0;
+      }
+      chartDataPoints.push(overallPoint);
+
+      // Per-stratum
+      for (const stratum of strata) {
+        const point: Record<string, unknown> = { segment: stratum };
+        for (const t of treatments) {
+          const subset = parsed.rows
+            .filter((r) => String(r[treatCol]) === t && String(r[stratCol]) === stratum)
+            .map((r) => Number(r[outCol]))
+            .filter((v) => !isNaN(v));
+          point[t] = subset.length > 0 ? Math.round((subset.reduce((a, b) => a + b, 0) / subset.length) * 1000) / 1000 : 0;
+        }
+        chartDataPoints.push(point);
+      }
+
+      charts.push({
+        type: "grouped-bar",
+        title: `Conversion Rate: ${treatCol} vs ${stratCol}`,
+        data: chartDataPoints,
+        config: {
+          keys: treatments,
+          xKey: "segment",
+          xLabel: stratCol,
+          yLabel: `${outCol} rate`,
+        },
+      });
+    }
+  }
+
+  // --- Line chart for time-series data ---
+  // Look for a time column (day, month, week, date, time, period)
+  const timeColNames = ["day", "month", "week", "date", "time", "period", "timestamp"];
+  const timeCol =
+    numCols.find((c) => timeColNames.some((t) => c.toLowerCase().includes(t))) ||
+    catCols.find((c) => timeColNames.some((t) => c.toLowerCase().includes(t)));
+
+  if (timeCol) {
+    // Find primary metrics to chart (exclude the time column itself)
+    const metricsToChart = numCols.filter((c) => c !== timeCol).slice(0, 4);
+
+    for (const metricCol of metricsToChart) {
+      const vals = parsed.numericColumns[metricCol];
+      const cp = detectChangepoints(vals, 2.0);
+      const anomalies = zScoreAnomalies(vals, 20);
+
+      const timeVals = parsed.numericColumns[timeCol] || [];
+      const chartDataPoints = parsed.rows.map((row, idx) => {
+        const point: Record<string, unknown> = {
+          x: timeVals[idx] ?? idx,
+          value: Number(row[metricCol]),
+          isAnomaly: anomalies.indices.includes(idx),
+        };
+        return point;
+      });
+
+      charts.push({
+        type: "line",
+        title: `${metricCol} over time`,
+        data: chartDataPoints,
+        config: {
+          xKey: "x",
+          valueKey: "value",
+          xLabel: timeCol,
+          yLabel: metricCol,
+          changepoints: cp.indices,
+          anomalyKey: "isAnomaly",
+        },
+      });
+    }
+  }
+
+  // --- Forest plot / horizontal bar for multi-endpoint (clinical trial style) ---
+  // Detect if we have a "group" column with treatment/placebo and multiple outcome columns
+  const groupCol = catCols.find((c) => {
+    const uniq = [...new Set(parsed.categoricalColumns[c].filter((v) => v && v !== "NaN"))];
+    return uniq.length === 2;
+  });
+
+  if (groupCol && !timeCol && numCols.length >= 4) {
+    const groups = [...new Set(parsed.categoricalColumns[groupCol].filter((v) => v && v !== "NaN"))];
+    if (groups.length === 2) {
+      const [gA, gB] = groups;
+      const effectSizes: Record<string, unknown>[] = [];
+
+      for (const numCol of numCols) {
+        const valA = parsed.rows
+          .filter((r) => String(r[groupCol]) === gA)
+          .map((r) => Number(r[numCol]))
+          .filter((v) => !isNaN(v));
+        const valB = parsed.rows
+          .filter((r) => String(r[groupCol]) === gB)
+          .map((r) => Number(r[numCol]))
+          .filter((v) => !isNaN(v));
+
+        if (valA.length < 3 || valB.length < 3) continue;
+
+        const t = twoSampleTTest(valA, valB);
+        const isSignificant = t.pValue < 0.05;
+        const isTiny = Math.abs(t.cohensD) < 0.1;
+
+        effectSizes.push({
+          endpoint: numCol,
+          cohensD: Math.round(t.cohensD * 1000) / 1000,
+          pValue: Math.round(t.pValue * 10000) / 10000,
+          significant: isSignificant,
+          tiny: isTiny,
+          color: isSignificant && !isTiny ? "green" : isTiny && isSignificant ? "red" : "gray",
+        });
+      }
+
+      if (effectSizes.length >= 3) {
+        charts.push({
+          type: "forest",
+          title: `Effect Sizes by Endpoint (${gA} vs ${gB})`,
+          data: effectSizes,
+          config: {
+            xKey: "cohensD",
+            yKey: "endpoint",
+            colorKey: "color",
+            pValueKey: "pValue",
+          },
+        });
+      }
+    }
+  }
+
+  return charts;
+}
+
+/**
  * Run a full statistical analysis suite on parsed CSV data.
  * Returns a summary string suitable for passing to Claude.
  */
@@ -735,6 +1110,17 @@ export function runAnalysisSuite(parsed: ParsedCSV): string {
           }
         }
       }
+    }
+    lines.push(``);
+  }
+
+  // --- Computed Surprise Scores ---
+  const surpriseScores = computeSurpriseScores(parsed);
+  const surpriseEntries = Object.entries(surpriseScores);
+  if (surpriseEntries.length > 0) {
+    lines.push(`--- Computed Surprise Scores ---`);
+    for (const [desc, score] of surpriseEntries.sort((a, b) => b[1] - a[1])) {
+      lines.push(`  "${desc}": surprise_kl=${score.toFixed(4)}`);
     }
     lines.push(``);
   }

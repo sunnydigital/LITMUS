@@ -58,6 +58,36 @@ export function discoveryScore(params: {
 }
 
 /**
+ * Convert a numeric array into a normalized probability distribution
+ * using histogram binning. Used by analysis.ts for KL divergence computation.
+ */
+export function distributionFromValues(values: number[], bins: number = 10): number[] {
+  const valid = values.filter((v) => !isNaN(v) && isFinite(v));
+  if (valid.length === 0) return new Array(bins).fill(1 / bins);
+
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const range = max - min;
+
+  // If all values are the same, uniform distribution
+  if (range < 1e-10) {
+    const dist = new Array(bins).fill(0);
+    dist[0] = 1;
+    return dist;
+  }
+
+  const counts = new Array(bins).fill(0);
+  for (const v of valid) {
+    const binIdx = Math.min(bins - 1, Math.floor(((v - min) / range) * bins));
+    counts[binIdx]++;
+  }
+
+  // Normalize to probability distribution
+  const total = valid.length;
+  return counts.map((c) => c / total);
+}
+
+/**
  * Rank findings by discovery score descending.
  */
 export function rankFindings<T extends { surpriseKL: number; pValue: number; effectSize: number }>(
